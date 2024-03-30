@@ -1,0 +1,21 @@
+[package]
+name = "inhouse-auth"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+mongodb = "2.1"
+bson = { version = "2", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
+tokio = "1"
+chrono = "0.4" # Used for setting DateTimes
+serde = "1" # Used in the Map Data into Structs section
+serde_json = "1.0.114"
+serde_with = "3.6.1"
+axum = "0.7.5"
+tower-cookies = "0.10.0"
+tower-http = { version = "0.5", features = ["fs"] }
+axum-macros = "0.4.1"
+strum_macros = "0.26.2"
+futures = "0.3.30"
