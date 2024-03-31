@@ -1,4 +1,4 @@
-# In-house-auth
+# In-house-aut
 
 ## Run Locally 
 

@@ -1,28 +1,12 @@
-use chrono::Utc;
 use mongodb::{Client, Collection};
 
-use crate::models::user_model::{NewUser, User};
+use crate::models::user_model::{User, new_user};
 
 pub async fn init_users(mongo_client: Client) {
     let users = vec![
-        NewUser {
-            name: "Debajyoti Saha".to_string(),
-            email: "debu@email.com".to_string(),
-            role: "admin".to_string(),
-            created_at: Utc::now().to_string(),
-        },
-        NewUser {
-            name: "Rajdeep Sengupta".to_string(),
-            email: "raj@email.com".to_string(),
-            role: "admin".to_string(),
-            created_at: Utc::now().to_string(),
-        },
-        NewUser {
-            name: "Sourav Banik".to_string(),
-            email: "sourav@email.com".to_string(),
-            role: "user".to_string(),
-            created_at: Utc::now().to_string(),
-        },
+        new_user("Debajyoti Saha".to_string(), "debu@email.com".to_string(), "admin".to_string()),
+        new_user("Rajdeep Sengupta".to_string(), "raj@email.com".to_string(), "admin".to_string()),
+        new_user("Sourav Banik".to_string(), "pachu@email.com".to_string(), "user".to_string()),
     ];
     // check if the user collection is empty
     let user_collection: Collection<User> = mongo_client.database("test").collection("users");
