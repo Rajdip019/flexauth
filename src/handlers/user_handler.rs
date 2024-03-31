@@ -1,11 +1,11 @@
 use crate::{
     error::{Error, Result},
-    models::user_model::{User, UserEmail},
+    models::user_model::{User, UserEmail, UserUpdate},
     AppState,
 };
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
-use bson::doc;
+use bson::{doc, DateTime};
 use chrono::Utc;
 use mongodb::Collection;
 use serde::de::DeserializeOwned;
@@ -33,6 +33,7 @@ pub async fn add_user_handler(
         "email": payload.email.clone(),
         "role": payload.role.clone(),
         "created_at": Utc::now(),
+        "updated_at": Utc::now(),
     };
 
     state
@@ -72,6 +73,50 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
 
     Ok(res)
 }
+
+pub async fn update_user_handler(State(state): State<AppState>, payload: Json<UserUpdate>) -> Result<Json<Value>> {
+    println!(">> HANDLER: update_user_handler called");
+
+    // check if the payload is empty
+    if payload.email.is_empty() {
+        return Err(Error::CreateUserInvalidPayload {
+            message: "Invalid payload".to_string(),
+        });
+    }
+
+    let db = state.mongo_client.database("test");
+    let collection: Collection<User> = db.collection("users");
+    let cursor = collection.update_one(
+        doc! {
+            "email": payload.email.clone(),
+        },
+        doc! {
+            "$set": {
+                "name": payload.name.clone(),
+                "role": payload.role.clone(),
+                "updated_at": DateTime::now(),
+            }
+        },
+        None,
+    ).await.unwrap();
+
+    let modified_count = cursor.modified_count;
+
+    if modified_count == 0 {
+        // send back a 404 to 
+        return Err(Error::UserNotFound {
+            message: "User not found".to_string(),
+        });
+    }
+
+    let res = Json(json!({
+        "message": "User updated",
+        "user": *payload,
+    }));
+
+    Ok(res)
+}
+
 #[debug_handler]
 pub async fn get_user_handler(State(state): State<AppState>, payload: Json<UserEmail>) -> Result<Json<Value>> {
     println!(">> HANDLER: get_user_handler called");
@@ -121,11 +166,18 @@ pub async fn delete_user_handler(State(state): State<AppState>, payload: Json<Us
         None,
     ).await.unwrap();
 
-    let count = cursor.deleted_count;
+    let deleted_count = cursor.deleted_count;
+
+    if deleted_count == 0 {
+        // send back a 404 to 
+        return Err(Error::UserNotFound {
+            message: "User not found".to_string(),
+        });
+    }
 
     let res = Json(json!({
         "message": "User Deleted",
-        "delete_count": count,
+        "delete_count": deleted_count,
     }));
 
     Ok(res)

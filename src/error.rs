@@ -11,6 +11,9 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     // -- Model errors
     CreateUserInvalidPayload { message: String },  
+
+    // -- User Errors
+    UserNotFound { message: String },
 }
 
 impl IntoResponse for Error {
@@ -27,28 +30,35 @@ impl IntoResponse for Error {
     }
 }
 
-// impl Error {
-//     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
-//         #[allow(unreachable_patterns)]
-//         match self {
-//             Self::CreateUserInvalidPayload { message: _ } => {
-//                 (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
-//             }
+impl Error {
+    pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
+        #[allow(unreachable_patterns)]
+        match self {
+            
+            Self::CreateUserInvalidPayload { message: _ } => {
+                (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
+            }
 
-//             _ => (
-//                 StatusCode::INTERNAL_SERVER_ERROR,
-//                 ClientError::SERVICE_ERROR,
-//             ),
-//         }
-//     }
-// }
+            Self::UserNotFound { message: _ } => {
+                (StatusCode::NOT_FOUND, ClientError::USER_NOT_FOUND)
+            }
 
-// #[derive(Debug, strum_macros::AsRefStr)]
-// #[allow(non_camel_case_types)]
-// pub enum ClientError {
-//     INVALID_PARAMS,
-//     SERVICE_ERROR,
-// }
+
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+        }
+    }
+}
+
+#[derive(Debug, strum_macros::AsRefStr)]
+#[allow(non_camel_case_types)]
+pub enum ClientError {
+    USER_NOT_FOUND,
+    INVALID_PARAMS,
+    SERVICE_ERROR,
+}
 
 // region:    --- Error Boilerplate
 impl core::fmt::Display for Error {
