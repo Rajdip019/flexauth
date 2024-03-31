@@ -23,7 +23,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
     let app_state = AppState { mongo_client };
-
     // run the server 
     let app = Router::new()
         .route("/", get(root_handler))
@@ -34,7 +33,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 async fn root_handler() -> &'static str {
-    "Hello, welcome to in-house auth"
+    "Hello, welcome to in-house auth service!"
 }

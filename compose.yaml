@@ -4,7 +4,7 @@ services:
   server:
     build:
       context: .
-      target: final
+      target: dev
     ports:
       - "8080:8080"
     depends_on:
@@ -13,6 +13,9 @@ services:
       - mongodb
     environment:
       MONGO_URI: mongodb://admin:admin@mongodb:27017
+    volumes:
+      - ./src:/app/src
+
 
   mongodb:
     image: mongodb/mongodb-community-server:latest
@@ -24,6 +27,4 @@ services:
     volumes:
       - ./data:/data/mongodb
     command: mongod --quiet --logpath /dev/null 
-
-
 

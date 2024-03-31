@@ -27,28 +27,28 @@ impl IntoResponse for Error {
     }
 }
 
-impl Error {
-    pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
-        #[allow(unreachable_patterns)]
-        match self {
-            Self::CreateUserInvalidPayload { message: _ } => {
-                (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
-            }
+// impl Error {
+//     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
+//         #[allow(unreachable_patterns)]
+//         match self {
+//             Self::CreateUserInvalidPayload { message: _ } => {
+//                 (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
+//             }
 
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ClientError::SERVICE_ERROR,
-            ),
-        }
-    }
-}
+//             _ => (
+//                 StatusCode::INTERNAL_SERVER_ERROR,
+//                 ClientError::SERVICE_ERROR,
+//             ),
+//         }
+//     }
+// }
 
-#[derive(Debug, strum_macros::AsRefStr)]
-#[allow(non_camel_case_types)]
-pub enum ClientError {
-    INVALID_PARAMS,
-    SERVICE_ERROR,
-}
+// #[derive(Debug, strum_macros::AsRefStr)]
+// #[allow(non_camel_case_types)]
+// pub enum ClientError {
+//     INVALID_PARAMS,
+//     SERVICE_ERROR,
+// }
 
 // region:    --- Error Boilerplate
 impl core::fmt::Display for Error {
