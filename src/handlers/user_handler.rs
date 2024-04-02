@@ -1,6 +1,6 @@
 use crate::{
     errors::{Error, Result},
-    models::user_model::{User, UserEmail, UserUpdate},
+    models::user_model::{UpdateUserPayload, User, UserEmail},
     AppState,
 };
 use axum::{extract::State, Json};
@@ -99,13 +99,13 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
 
 pub async fn update_user_handler(
     State(state): State<AppState>,
-    payload: Json<UserUpdate>,
+    payload: Json<UpdateUserPayload>,
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: update_user_handler called");
 
     // check if the payload is empty
-    if payload.email.is_empty() {
-        return Err(Error::CreateUserInvalidPayload {
+    if payload.email.is_empty() || payload.name.is_empty() || payload.role.is_empty() {
+        return Err(Error::UpdateUserInvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }

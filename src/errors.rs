@@ -11,6 +11,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     // -- Model errors
     CreateUserInvalidPayload { message: String },
+    UpdateUserInvalidPayload { message: String },
 
     // -- User Errors
     UserNotFound { message: String },
@@ -45,7 +46,7 @@ impl Error {
             }
 
             Self::UserAlreadyExists { message: _ } => {
-                (StatusCode::FOUND, ClientError::INVALID_PARAMS)
+                (StatusCode::FOUND, ClientError::USER_ALREADY_EXISTS)
             }
 
             _ => (
@@ -62,6 +63,7 @@ pub enum ClientError {
     USER_NOT_FOUND,
     INVALID_PARAMS,
     SERVICE_ERROR,
+    USER_ALREADY_EXISTS,
 }
 
 // region:    --- Error Boilerplate
