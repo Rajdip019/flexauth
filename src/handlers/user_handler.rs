@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, Result},
+    errors::{Error, Result},
     models::user_model::{User, UserEmail, UserUpdate},
     AppState,
 };
