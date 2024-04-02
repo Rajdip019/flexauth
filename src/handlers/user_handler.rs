@@ -13,18 +13,41 @@ use serde::de::DeserializeOwned;
 use futures::stream::StreamExt;
 use serde_json::{json, Value};
 
-use crate::models::user_model::NewUser;
+use crate::models::user_model::AddUserPayload;
 
 #[debug_handler]
 pub async fn add_user_handler(
     State(state): State<AppState>,
-    payload: Json<NewUser>,
+    payload: Json<AddUserPayload>,
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: add_user_handler called");
     // check if the payload is empty
-    if payload.name.is_empty() || payload.email.is_empty() || payload.role.is_empty() {
+    if payload.name.is_empty()
+        || payload.email.is_empty()
+        || payload.role.is_empty()
+        || payload.password.is_empty()
+    {
         return Err(Error::CreateUserInvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    let db = state.mongo_client.database("test");
+
+    let collection: Collection<User> = db.collection("users");
+    let cursor = collection
+        .find_one(
+            Some(doc! {
+                "email": payload.email.clone()
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    if cursor.is_some() {
+        return Err(Error::UserAlreadyExists {
+            message: "User already exists".to_string(),
         });
     }
 
@@ -32,14 +55,14 @@ pub async fn add_user_handler(
         "name": payload.name.clone(),
         "email": payload.email.clone(),
         "role": payload.role.clone(),
+        "password": payload.password.clone(),
+        "email_verified": false,
+        "is_active": true,
         "created_at": Utc::now(),
         "updated_at": Utc::now(),
     };
 
-    state
-        .mongo_client
-        .database("test")
-        .collection("users")
+    db.collection("users")
         .insert_one(user.clone(), None)
         .await
         .unwrap();
@@ -74,7 +97,10 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
     Ok(res)
 }
 
-pub async fn update_user_handler(State(state): State<AppState>, payload: Json<UserUpdate>) -> Result<Json<Value>> {
+pub async fn update_user_handler(
+    State(state): State<AppState>,
+    payload: Json<UserUpdate>,
+) -> Result<Json<Value>> {
     println!(">> HANDLER: update_user_handler called");
 
     // check if the payload is empty
@@ -86,24 +112,27 @@ pub async fn update_user_handler(State(state): State<AppState>, payload: Json<Us
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let cursor = collection.update_one(
-        doc! {
-            "email": payload.email.clone(),
-        },
-        doc! {
-            "$set": {
-                "name": payload.name.clone(),
-                "role": payload.role.clone(),
-                "updated_at": DateTime::now(),
-            }
-        },
-        None,
-    ).await.unwrap();
+    let cursor = collection
+        .update_one(
+            doc! {
+                "email": payload.email.clone(),
+            },
+            doc! {
+                "$set": {
+                    "name": payload.name.clone(),
+                    "role": payload.role.clone(),
+                    "updated_at": DateTime::now(),
+                }
+            },
+            None,
+        )
+        .await
+        .unwrap();
 
     let modified_count = cursor.modified_count;
 
     if modified_count == 0 {
-        // send back a 404 to 
+        // send back a 404 to
         return Err(Error::UserNotFound {
             message: "User not found".to_string(),
         });
@@ -118,7 +147,10 @@ pub async fn update_user_handler(State(state): State<AppState>, payload: Json<Us
 }
 
 #[debug_handler]
-pub async fn get_user_handler(State(state): State<AppState>, payload: Json<UserEmail>) -> Result<Json<Value>> {
+pub async fn get_user_handler(
+    State(state): State<AppState>,
+    payload: Json<UserEmail>,
+) -> Result<Json<Value>> {
     println!(">> HANDLER: get_user_handler called");
 
     // check if the payload is empty
@@ -130,12 +162,15 @@ pub async fn get_user_handler(State(state): State<AppState>, payload: Json<UserE
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let cursor = collection.find_one(
-        Some(doc! {
-            "email": payload.email.clone(),
-        }),
-        None,
-    ).await.unwrap();
+    let cursor = collection
+        .find_one(
+            Some(doc! {
+                "email": payload.email.clone(),
+            }),
+            None,
+        )
+        .await
+        .unwrap();
 
     let user = cursor.unwrap();
 
@@ -147,7 +182,10 @@ pub async fn get_user_handler(State(state): State<AppState>, payload: Json<UserE
     Ok(res)
 }
 
-pub async fn delete_user_handler(State(state): State<AppState>, payload: Json<UserEmail>) -> Result<Json<Value>> {
+pub async fn delete_user_handler(
+    State(state): State<AppState>,
+    payload: Json<UserEmail>,
+) -> Result<Json<Value>> {
     println!(">> HANDLER: delete_user_handler called");
 
     // check if the payload is empty
@@ -159,17 +197,20 @@ pub async fn delete_user_handler(State(state): State<AppState>, payload: Json<Us
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let cursor = collection.delete_one(
-        doc! {
-            "email": payload.email.clone(),
-        },
-        None,
-    ).await.unwrap();
+    let cursor = collection
+        .delete_one(
+            doc! {
+                "email": payload.email.clone(),
+            },
+            None,
+        )
+        .await
+        .unwrap();
 
     let deleted_count = cursor.deleted_count;
 
     if deleted_count == 0 {
-        // send back a 404 to 
+        // send back a 404 to
         return Err(Error::UserNotFound {
             message: "User not found".to_string(),
         });
