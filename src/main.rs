@@ -1,10 +1,9 @@
 use axum::{extract::State, middleware, routing::get, Router};
 use middlewares::res_log::main_response_mapper;
 use mongodb::Client;
+use utils::hashing_utils::{create_dek, salt_and_hash_password};
 use std::error::Error;
 use tokio;
-
-
 
 mod handlers;
 mod routes;
@@ -20,7 +19,7 @@ struct AppState {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {    
+async fn main() -> Result<(), Box<dyn Error>> {   
     let mongo_client = config::db_connection_handler::connect().await?;
     
     // init users if not exists
