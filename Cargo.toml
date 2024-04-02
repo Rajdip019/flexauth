@@ -19,3 +19,5 @@ tower-http = { version = "0.5", features = ["fs"] }
 axum-macros = "0.4.1"
 strum_macros = "0.26.2"
 futures = "0.3.30"
+sha256 = "1.5.0"
+argon2 = "0.5.3"
