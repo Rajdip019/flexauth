@@ -23,7 +23,7 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {    
-    let mongo_client = config::db_connection_handler::mongo_connection_handler().await?;
+    let mongo_client = config::db_connection_handler::connect().await?;
     
     // init users if not exists
     config::user_init::init_users(mongo_client.clone()).await;
