@@ -1,6 +1,6 @@
 use mongodb::{Client, Collection};
 
-use crate::models::user_model::{User, new_user};
+use crate::{models::user_model::User, utils::user_utils::new_user};
 
 pub async fn init_users(mongo_client: Client) {
     let users = vec![
