@@ -10,16 +10,18 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[serde(tag = "type", content = "data")]
 pub enum Error {
     // -- Model errors
-    CreateUserInvalidPayload { message: String },  
+    CreateUserInvalidPayload { message: String },
 
     // -- User Errors
     UserNotFound { message: String },
+
+    UserAlreadyExists { message: String },
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         println!("{:?}", self);
-        
+
         // Create a placeholder Axum response
         let mut response = StatusCode::INTERNAL_SERVER_ERROR.into_response();
 
@@ -34,7 +36,6 @@ impl Error {
     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
         #[allow(unreachable_patterns)]
         match self {
-            
             Self::CreateUserInvalidPayload { message: _ } => {
                 (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
             }
@@ -43,6 +44,9 @@ impl Error {
                 (StatusCode::NOT_FOUND, ClientError::USER_NOT_FOUND)
             }
 
+            Self::UserAlreadyExists { message: _ } => {
+                (StatusCode::FOUND, ClientError::INVALID_PARAMS)
+            }
 
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,

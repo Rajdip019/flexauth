@@ -4,9 +4,24 @@ use crate::{models::user_model::User, utils::user_utils::new_user};
 
 pub async fn init_users(mongo_client: Client) {
     let users = vec![
-        new_user("Debajyoti Saha".to_string(), "debu@email.com".to_string(), "admin".to_string()),
-        new_user("Rajdeep Sengupta".to_string(), "raj@email.com".to_string(), "admin".to_string()),
-        new_user("Sourav Banik".to_string(), "pachu@email.com".to_string(), "user".to_string()),
+        new_user(
+            "Debajyoti Saha".to_string(),
+            "debu@email.com".to_string(),
+            "admin".to_string(),
+            "debu14@".to_string(),
+        ),
+        new_user(
+            "Rajdeep Sengupta".to_string(),
+            "raj@email.com".to_string(),
+            "admin".to_string(),
+            "raj19@".to_string(),
+        ),
+        new_user(
+            "Sourav Banik".to_string(),
+            "pachu@email.com".to_string(),
+            "user".to_string(),
+            "pachu20@".to_string(),
+        ),
     ];
     // check if the user collection is empty
     let user_collection: Collection<User> = mongo_client.database("test").collection("users");
