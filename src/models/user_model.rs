@@ -57,7 +57,7 @@ pub struct UserEmail {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UserUpdate {
+pub struct UpdateUserPayload {
     pub name: String,
     pub email: String,
     pub role: String,
