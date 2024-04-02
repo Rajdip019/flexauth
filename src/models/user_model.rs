@@ -10,16 +10,6 @@ pub struct NewUser {
     pub updated_at: DateTime,
 }
 
-pub fn new_user(name: String, email: String, role: String) -> NewUser {
-    NewUser {
-        name,
-        email,
-        role,
-        created_at: DateTime::now(),
-        updated_at: DateTime::now(),
-    }
-}
-
 #[derive(Serialize, Deserialize,Debug, Clone, Default)]
 pub struct User {
     pub _id: ObjectId,
