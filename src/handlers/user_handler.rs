@@ -1,6 +1,7 @@
 use crate::{
     errors::{Error, Result},
     models::user_model::{UpdateUserPayload, User, UserEmail},
+    utils::hashing_utils::{create_dek, encrypt_data, salt_and_hash_password},
     AppState,
 };
 use axum::{extract::State, Json};
@@ -12,6 +13,7 @@ use serde::de::DeserializeOwned;
 // use mongodb::Client;
 use futures::stream::StreamExt;
 use serde_json::{json, Value};
+use std::env;
 
 use crate::models::user_model::AddUserPayload;
 
@@ -51,11 +53,25 @@ pub async fn add_user_handler(
         });
     }
 
+    let hashed_and_salted_pass = salt_and_hash_password(&payload.password);
+
+    let key = create_dek();
+
+    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &key);
+    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &key);
+    let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
+
+    let encrypted_email = encrypt_data(&payload.email, &key);
+    let encrypted_role = encrypt_data(&payload.role, &key);
+
+    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+    let encrypted_dek = encrypt_data(&key, &server_kek);
     let user = doc! {
         "name": payload.name.clone(),
-        "email": payload.email.clone(),
-        "role": payload.role.clone(),
-        "password": payload.password.clone(),
+        "email": encrypted_email.clone(),
+        "role": encrypted_role,
+        "password": formatted_pass_with_salt,
         "email_verified": false,
         "is_active": true,
         "created_at": Utc::now(),
@@ -64,6 +80,17 @@ pub async fn add_user_handler(
 
     db.collection("users")
         .insert_one(user.clone(), None)
+        .await
+        .unwrap();
+
+    db.collection("deks")
+        .insert_one(
+            doc! {
+                "email": encrypted_email.clone(),
+                "dek": encrypted_dek,
+            },
+            None,
+        )
         .await
         .unwrap();
 
@@ -92,7 +119,7 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
         users.push(user.unwrap());
     }
 
-    let res = Json(json!(users));     
+    let res = Json(json!(users));
 
     Ok(res)
 }
