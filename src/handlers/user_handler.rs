@@ -92,7 +92,7 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
         users.push(user.unwrap());
     }
 
-    let res = Json(json!(users));
+    let res = Json(json!(users));     
 
     Ok(res)
 }
