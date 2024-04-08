@@ -1,8 +1,5 @@
 use argon2::{
-    password_hash::{
-        rand_core::OsRng,
-        PasswordHasher, SaltString,
-    },
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use sha256::digest;
