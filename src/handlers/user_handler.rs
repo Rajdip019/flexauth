@@ -1,7 +1,8 @@
 use crate::{
     errors::{Error, Result},
     models::user_model::{UpdateUserPayload, User, UserEmail},
-    utils::hashing_utils::{create_dek, encrypt_data, salt_and_hash_password},
+    utils::encryption_utils::{create_dek, encrypt_data},
+    utils::hashing_utils::salt_and_hash_password,
     AppState,
 };
 use axum::{extract::State, Json};

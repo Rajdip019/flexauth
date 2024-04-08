@@ -1,10 +1,7 @@
 use axum::{extract::State, middleware, routing::get, Router};
 use middlewares::res_log::main_response_mapper;
 use mongodb::Client;
-use std::env;
 use std::error::Error;
-
-use dotenv::dotenv;
 
 mod config;
 mod errors;
@@ -21,7 +18,6 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    dotenv().ok();
     let mongo_client = config::db_connection_handler::connect().await?;
 
     // init users if not exists
