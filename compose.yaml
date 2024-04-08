@@ -13,6 +13,7 @@ services:
       - mongodb
     environment:
       MONGO_URI: mongodb://admin:admin@mongodb:27017
+      SERVER_KEK: 9628177f62a03f5db4742273b915bf66.a21a897aa750
     volumes:
       - ./src:/app/src
 
