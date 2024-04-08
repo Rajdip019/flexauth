@@ -1,9 +1,11 @@
 use axum::{extract::State, middleware, routing::get, Router};
 use middlewares::res_log::main_response_mapper;
 use mongodb::Client;
-use utils::hashing_utils::{create_dek, salt_and_hash_password};
+use utils::hashing_utils::{create_dek, encrypt_data, decrypt_data};
 use std::error::Error;
 use tokio;
+
+use utils::hashing_utils::salt_and_hash_password;
 
 mod handlers;
 mod routes;
@@ -20,6 +22,20 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {   
+    let password = "test_password";
+    let hashed_and_salted_pass = salt_and_hash_password(password);
+    println!("Hashed password: {:?}", hashed_and_salted_pass.password);
+    println!("Salt: {:?}", hashed_and_salted_pass.salt);
+    let key = create_dek();
+    println!("Key: {:?}", key);
+    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &key);
+    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &key);
+    println!("Encrypted password: {:?}", encrypted_password);
+    println!("Encrypted salt: {:?}", encrypted_salt);
+    let decrypted_password = decrypt_data(&encrypted_password, &key);
+    let decrypted_salt = decrypt_data(&encrypted_salt, &key);
+    println!("Decrypted password: {:?}", decrypted_password);
+    println!("Decrypted salt: {:?}", decrypted_salt);
     let mongo_client = config::db_connection_handler::connect().await?;
     
     // init users if not exists
