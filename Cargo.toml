@@ -2,11 +2,13 @@
 name = "inhouse-auth"
 version = "0.1.0"
 edition = "2021"
+default-run = "inhouse-auth"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
 name="create_kek"
 path="src/cli/main.rs"
+
 
 [dependencies]
 mongodb = "2.1"
