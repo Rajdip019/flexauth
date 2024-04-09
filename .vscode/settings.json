@@ -3,6 +3,7 @@
         "./Cargo.toml",
     ],
     "cSpell.words": [
+        "bson",
         "deks",
         "signin"
     ]

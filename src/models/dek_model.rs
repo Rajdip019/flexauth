@@ -10,3 +10,12 @@ pub struct Dek {
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }
+
+#[derive(Deserialize, Debug, Clone, Serialize)]
+pub struct NewDek {
+    pub uid: String,
+    pub email: String,
+    pub dek: String,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
+}

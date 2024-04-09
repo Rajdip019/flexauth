@@ -135,6 +135,8 @@ pub async fn signin_handler(
     let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
     let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
 
+    println!(">> Encrypted email kek: {:?}", encrypted_email_kek);
+
     // find the user in the dek collection using the encrypted email
     let db = state.mongo_client.database("test");
     let collection: Collection<Dek> = db.collection("deks");
@@ -174,7 +176,7 @@ pub async fn signin_handler(
 
     if user_cursor.is_none() {
         return Err(Error::UserNotFound {
-            message: "User not found".to_string(),
+            message: "User not found test 2".to_string(),
         });
     }
 

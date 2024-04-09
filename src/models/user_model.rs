@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct NewUser {
+    pub uid: String,
     pub name: String,
     pub email: String,
     pub password: String,
