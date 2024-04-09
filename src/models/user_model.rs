@@ -12,30 +12,11 @@ pub struct NewUser {
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }
-#[derive(Deserialize, Debug, Clone, Serialize)]
-pub struct AddUserPayload {
-    pub name: String,
-    pub email: String,
-    pub password: String,
-    pub role: String,
-}
-
-pub fn new_user(name: String, email: String, role: String, password: String) -> NewUser {
-    NewUser {
-        name,
-        email,
-        password,
-        role,
-        created_at: DateTime::now(),
-        updated_at: DateTime::now(),
-        email_verified: false,
-        is_active: false,
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct User {
     pub _id: ObjectId,
+    pub uid: String,
     pub name: String,
     pub email: String,
     pub role: String,
@@ -44,6 +25,20 @@ pub struct User {
     pub is_active: bool,
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
+}
+
+#[derive(Deserialize, Debug, Clone, Serialize)]
+pub struct SignUpPayload {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub role: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SignInPayload {
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
