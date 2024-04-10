@@ -1,7 +1,13 @@
 use crate::{
     errors::{Error, Result},
-    models::{dek_model::Dek, user_model::{SignInPayload, UpdateUserPayload, User, UserEmail}},
-    utils::{encryption_utils::{create_dek, decrypt_data, encrypt_data}, hashing_utils::{salt_and_hash_password, verify_password}},
+    models::{
+        dek_model::Dek,
+        user_model::{SignInPayload, UpdateUserPayload, User, UserEmail, UserResponse},
+    },
+    utils::{
+        encryption_utils::{create_dek, decrypt_data, encrypt_data},
+        hashing_utils::{salt_and_hash_password, verify_password},
+    },
     AppState,
 };
 use axum::{extract::State, Json};
@@ -93,7 +99,7 @@ pub async fn signup_handler(
     // insert the dek and email kek in the deks collection by encrypting them with the server kek
     let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
     let encrypted_dek = encrypt_data(&key, &server_kek);
-    let encrypted_email_kek = encrypt_data(&key, &server_kek);
+    let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
     let encrypted_uid = encrypt_data(&uid.to_string(), &server_kek);
 
     db.collection("deks")
@@ -149,7 +155,7 @@ pub async fn signin_handler(
         )
         .await
         .unwrap();
-    
+
     if cursor.is_none() {
         return Err(Error::UserNotFound {
             message: "User not found".to_string(),
@@ -176,7 +182,7 @@ pub async fn signin_handler(
 
     if user_cursor.is_none() {
         return Err(Error::UserNotFound {
-            message: "User not found test 2".to_string(),
+            message: "User not found".to_string(),
         });
     }
 
@@ -211,11 +217,55 @@ pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let mut cursor = collection.find(None, None).await.unwrap();
+    let collection_dek: Collection<Dek> = db.collection("deks");
+
+    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+    // let mut cursor = collection.find(None, None).await.unwrap();
+    let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
 
     let mut users = Vec::new();
-    while let Some(user) = cursor.next().await {
-        users.push(user.unwrap());
+
+    // iterate over the users and decrypt the data
+    while let Some(dek) = cursor_dek.next().await {
+        let dek_data = dek.unwrap();
+
+        // decrypt the email & DEK using the server kek
+        let decrypted_email = decrypt_data(&dek_data.email, &server_kek);
+        let dek = decrypt_data(&dek_data.dek, &server_kek);
+
+        // Encrypt the email with the DEK
+        let encrypted_email_kek = encrypt_data(&decrypted_email, &dek);
+
+        // find the user in the users collection using the encrypted email to iterate over the users
+        let cursor_user = collection
+            .find_one(
+                Some(doc! {
+                    "email": encrypted_email_kek,
+                }),
+                None,
+            )
+            .await
+            .unwrap();
+
+        if cursor_user.is_none() {
+            return Err(Error::UserNotFound {
+                message: "User not found".to_string(),
+            });
+        }
+
+        let user_data = cursor_user.unwrap();
+
+        users.push(UserResponse {
+            name: user_data.name,
+            email: decrypt_data(&user_data.email, &dek),
+            role: decrypt_data(&user_data.role, &dek),
+            created_at: user_data.created_at,
+            updated_at: user_data.updated_at,
+            email_verified: user_data.email_verified,
+            is_active: user_data.is_active,
+            uid: user_data.uid,
+        });
     }
 
     let res = Json(json!(users));
@@ -285,27 +335,72 @@ pub async fn get_user_handler(
             message: "Invalid payload".to_string(),
         });
     }
-
     let db = state.mongo_client.database("test");
-    let collection: Collection<User> = db.collection("users");
-    let cursor = collection
+    let collection_user: Collection<User> = db.collection("users");
+    let collection_dek: Collection<Dek> = db.collection("deks");
+
+    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+    // encrypt the email using kek
+    let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
+
+    let cursor_dek = collection_dek
         .find_one(
             Some(doc! {
-                "email": payload.email.clone(),
+                "email": encrypted_email_kek.clone(),
             }),
             None,
         )
         .await
         .unwrap();
 
-    let user = cursor.unwrap();
+    if cursor_dek.is_none() {
+        return Err(Error::UserNotFound {
+            message: "User not found".to_string(),
+        });
+    }
 
-    let res = Json(json!({
+    let dek_data = cursor_dek.unwrap();
+
+    // decrypt the dek using the server kek
+    let dek = decrypt_data(&dek_data.dek, &server_kek);
+    let uid = decrypt_data(&dek_data.uid, &server_kek);
+
+    // find the user in the users collection using the uid
+    let user_cursor = collection_user
+        .find_one(
+            Some(doc! {
+                "uid": uid.clone(),
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    // Return Error if User is not there
+    if user_cursor.is_none() {
+        return Err(Error::UserNotFound {
+            message: "User not found".to_string(),
+        });
+    }
+
+    let user_data = user_cursor.unwrap();
+
+    let user = UserResponse {
+        name: user_data.name,
+        email: decrypt_data(&user_data.email, &dek),
+        role: decrypt_data(&user_data.role, &dek),
+        created_at: user_data.created_at,
+        updated_at: user_data.updated_at,
+        email_verified: user_data.email_verified,
+        is_active: user_data.is_active,
+        uid: user_data.uid,
+    };
+
+    Ok(Json(json!({
         "message": "User found",
         "user": user,
-    }));
-
-    Ok(res)
+    })))
 }
 
 pub async fn delete_user_handler(

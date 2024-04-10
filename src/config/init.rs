@@ -1,7 +1,15 @@
-use std::env;
 use mongodb::{Client, Collection};
+use std::env;
 
-use crate::{models::user_model::User, utils::{dek_utils::new_dek, encryption_utils::{create_dek, encrypt_data}, hashing_utils::salt_and_hash_password, user_utils::new_user}};
+use crate::{
+    models::user_model::User,
+    utils::{
+        dek_utils::new_dek,
+        encryption_utils::{create_dek, encrypt_data},
+        hashing_utils::salt_and_hash_password,
+        user_utils::new_user,
+    },
+};
 
 struct InitUser {
     name: String,
@@ -67,9 +75,9 @@ pub async fn init_users(mongo_client: Client) {
         // add user to the database
         let db = mongo_client.database("test");
         db.collection("users")
-        .insert_one(new_user.clone(), None)
-        .await
-        .unwrap();
+            .insert_one(new_user.clone(), None)
+            .await
+            .unwrap();
 
         // encrypt the data with kek
         let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
@@ -77,17 +85,13 @@ pub async fn init_users(mongo_client: Client) {
         let encrypted_email_kek = encrypt_data(&user.email, &server_kek);
         let encrypted_uid = encrypt_data(&new_user.uid.to_string(), &server_kek);
 
-        let dek_data = new_dek(
-            encrypted_uid,
-            encrypted_email_kek,
-            encrypted_dek,
-        );
+        let dek_data = new_dek(encrypted_uid, encrypted_email_kek, encrypted_dek);
 
         // add the dek to the database
         db.collection("deks")
-        .insert_one(dek_data, None)
-        .await
-        .unwrap();
+            .insert_one(dek_data, None)
+            .await
+            .unwrap();
 
         println!(">> {:?} added. uid: {:?}", new_user.name, new_user.uid);
     }
