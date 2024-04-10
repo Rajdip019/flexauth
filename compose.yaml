@@ -11,6 +11,7 @@ services:
       - mongodb
     links:
       - mongodb
+      - smtp-server
     environment:
       MONGO_URI: mongodb://admin:admin@mongodb:27017
       SERVER_KEK: 9628177f62a03f5db4742273b915bf66.a21a897aa750
@@ -28,4 +29,17 @@ services:
     volumes:
       - ./data:/data/mongodb
     command: mongod --quiet --logpath /dev/null 
+
+  smtp-server:
+    build:
+      context: .
+      target: smtp
+      args:
+        EMAIL: rajdeeptechbyparts019@gmail.com
+        EMAIL_PASSWORD: vykpvrrjdukwrdlu
+        MAIL_NAME: Rajdeep
+        SMTP_DOMAIN: smtp.gmail.com
+        SMTP_PORT: 587
+    ports:
+      - 25:25
 
