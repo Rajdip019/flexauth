@@ -19,6 +19,12 @@ WORKDIR /app
 # Install system dependencies
 RUN apk add --no-cache musl-dev
 
+# Install OpenSSL development libraries
+RUN apk add --no-cache pkgconfig openssl-dev
+
+# -lssl -lcrypto are required for the openssl crate
+RUN apk add --no-cache openssl-libs-static
+
 # Install cargo-watch for auto-reloading
 RUN cargo install cargo-watch
 
@@ -41,7 +47,15 @@ WORKDIR /app
 # Install host build dependencies.
 RUN apk add --no-cache clang lld musl-dev git
 
+# Install OpenSSL development libraries
+RUN apk add --no-cache pkgconfig openssl-dev
+
+# -lssl -lcrypto are required for the openssl crate
+RUN apk add --no-cache openssl-libs-static
+
+
 RUN cargo install cargo-watch
+
 
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
