@@ -11,4 +11,3 @@ pub fn new_dek(uid: String, email: String, dek: String) -> NewDek {
         updated_at: DateTime::now(),
     }
 }
- 
