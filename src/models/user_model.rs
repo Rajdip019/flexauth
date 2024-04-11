@@ -58,3 +58,15 @@ pub struct UpdateUserPayload {
     pub email: String,
     pub role: String,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserResponse {
+    pub uid: String,
+    pub name: String,
+    pub role: String,
+    pub email: String,
+    pub email_verified: bool,
+    pub is_active: bool,
+    pub created_at: Option<DateTime>,
+    pub updated_at: Option<DateTime>,
+}
