@@ -56,7 +56,18 @@ pub struct UserEmail {
 pub struct UpdateUserPayload {
     pub name: String,
     pub email: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UpdateUserRolePayload {
     pub role: String,
+    pub email: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ToggleUserActivationStatusPayload {
+    pub is_active: Option<bool>,
+    pub email: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
