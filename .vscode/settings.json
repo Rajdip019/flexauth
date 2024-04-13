@@ -6,6 +6,7 @@
         "bson",
         "chrono",
         "deks",
+        "dotenv",
         "signin"
     ]
 }
