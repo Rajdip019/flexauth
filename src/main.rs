@@ -20,8 +20,6 @@ struct AppState {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
-
-    // utils::email::send_email().await;
     let mongo_client = config::db_connection_handler::connect().await?;
     // init users if not exists
     config::init::init_users(mongo_client.clone()).await;
