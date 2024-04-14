@@ -23,13 +23,13 @@ pub async fn init_users(mongo_client: Client) {
     let users = vec![
         InitUser {
             name: "Debajyoti Saha".to_string(),
-            email: "debu@email.com".to_string(),
+            email: "debajyotisaha14@gmail.com".to_string(),
             role: "admin".to_string(),
             password: "debu14@".to_string(),
         },
         InitUser {
             name: "Rajdeep Sengupta".to_string(),
-            email: "raj@email.com".to_string(),
+            email: "rajdipgupta019@gmail.com".to_string(),
             role: "admin".to_string(),
             password: "raj19@".to_string(),
         },

@@ -38,7 +38,7 @@ pub async fn signup_handler(
         || payload.role.is_empty()
         || payload.password.is_empty()
     {
-        return Err(Error::CreateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
@@ -135,7 +135,7 @@ pub async fn signin_handler(
 
     // check if the payload is empty
     if payload.email.is_empty() || payload.password.is_empty() {
-        return Err(Error::CreateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
@@ -199,7 +199,16 @@ pub async fn signin_handler(
     if verify_password(&payload.password, &salt, &password_hashed) {
         let res = Json(json!({
             "message": "Signin successful",
-            "user": user,
+            "user": {
+                "name": user.name,
+                "email": decrypt_data(&user.email, &dek),
+                "role": decrypt_data(&user.role, &dek),
+                "created_at": user.created_at,
+                "updated_at": user.updated_at,
+                "email_verified": user.email_verified,
+                "is_active": user.is_active,
+                "uid": user.uid,
+            },
         }));
 
         Ok(res)
@@ -284,7 +293,7 @@ pub async fn update_user_handler(
 
     // check if the payload is empty
     if payload.email.is_empty() || payload.name.is_empty() {
-        return Err(Error::UpdateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
@@ -362,7 +371,7 @@ pub async fn update_user_role_handler(
 
     // check if the payload is empty
     if payload.email.is_empty() || payload.role.is_empty() {
-        return Err(Error::UpdateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
@@ -444,13 +453,13 @@ pub async fn toggle_user_activation_status(
     match payload.is_active {
         Some(_) => {
             if payload.email.is_empty() {
-                return Err(Error::UpdateUserInvalidPayload {
+                return Err(Error::InvalidPayload {
                     message: "Invalid payload".to_string(),
                 });
             }
         }
         None => {
-            return Err(Error::UpdateUserInvalidPayload {
+            return Err(Error::InvalidPayload {
                 message: "Invalid payload".to_string(),
             });
         }
@@ -531,7 +540,7 @@ pub async fn get_user_handler(
 
     // check if the payload is empty
     if payload.email.is_empty() {
-        return Err(Error::CreateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
@@ -611,7 +620,7 @@ pub async fn delete_user_handler(
 
     // check if the payload is empty
     if payload.email.is_empty() {
-        return Err(Error::CreateUserInvalidPayload {
+        return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
         });
     }
