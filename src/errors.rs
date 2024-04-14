@@ -10,13 +10,15 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[serde(tag = "type", content = "data")]
 pub enum Error {
     // -- Model errors
-    CreateUserInvalidPayload { message: String },
-    UpdateUserInvalidPayload { message: String },
+    InvalidPayload { message: String },
 
     // -- User Errors
     UserNotFound { message: String },
-
     UserAlreadyExists { message: String },
+
+    // -- Password Errors
+    InvalidPassword { message: String },
+    ResetPasswordLinkExpired { message: String },
 }
 
 impl IntoResponse for Error {
@@ -37,7 +39,7 @@ impl Error {
     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
         #[allow(unreachable_patterns)]
         match self {
-            Self::CreateUserInvalidPayload { message: _ } => {
+            Self::InvalidPayload { message: _ } => {
                 (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
             }
 
@@ -47,6 +49,14 @@ impl Error {
 
             Self::UserAlreadyExists { message: _ } => {
                 (StatusCode::FOUND, ClientError::USER_ALREADY_EXISTS)
+            }
+
+            Self::InvalidPassword { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::INVALID_PASSWORD)
+            }
+
+            Self::ResetPasswordLinkExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::RESET_PASSWORD_LINK_EXPIRED)
             }
 
             _ => (
@@ -64,6 +74,8 @@ pub enum ClientError {
     INVALID_PARAMS,
     SERVICE_ERROR,
     USER_ALREADY_EXISTS,
+    INVALID_PASSWORD,
+    RESET_PASSWORD_LINK_EXPIRED,
 }
 
 // region:    --- Error Boilerplate
