@@ -167,7 +167,7 @@ pub async fn forgot_password_request_handler(
         name: "User".to_string(),
         email: payload.email.clone(),
         subject: "Reset Password".to_string(),
-        body: format!("Please click on the link to reset your password: http://localhost:8080/forget-reset-password/{}", new_doc.id),
+        body: format!("Please click on the link to reset your password: http://localhost:8080/forget-password-reset/{}", new_doc.id),
     }).await;
 
     return Ok(Json(json!({
