@@ -9,13 +9,13 @@ use crate::{
     },
     utils::{
         encryption_utils::{create_dek, decrypt_data, encrypt_data},
-        hashing_utils::{salt_and_hash_password, verify_password},
+        hashing_utils::{salt_and_hash_password, verify_password}, session_utils::sign_jwt,
     },
     AppState,
 };
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
-use bson::{doc, uuid, DateTime};
+use bson::{doc, oid::ObjectId, uuid, DateTime};
 use chrono::Utc;
 use mongodb::Collection;
 use serde::de::DeserializeOwned;
@@ -65,43 +65,42 @@ pub async fn signup_handler(
     // hash and salt the password
     let hashed_and_salted_pass = salt_and_hash_password(&payload.password);
 
-    let key = create_dek(); // create a data encryption key for new user
+    let dek = create_dek(); // create a data encryption key for new user
 
     // encrypt the password and salt with the dek
-    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &key);
-    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &key);
+    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
+    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
 
     // format the password and salt with a delimiter
     let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
 
     // encrypt other sensitive data with the dek
-    let encrypted_email = encrypt_data(&payload.email, &key);
-    let encrypted_role = encrypt_data(&payload.role, &key);
+    let encrypted_email = encrypt_data(&payload.email, &dek);
+    let encrypted_role = encrypt_data(&payload.role, &dek);
 
     // create a new uid for the user
     let uid = uuid::Uuid::new();
 
     // insert the user in the users collection
-    let user = doc! {
-        "uid": uid,
-        "name": payload.name.clone(),
-        "email": encrypted_email.clone(),
-        "role": encrypted_role,
-        "password": formatted_pass_with_salt,
-        "email_verified": false,
-        "is_active": true,
-        "created_at": Utc::now(),
-        "updated_at": Utc::now(),
+    let user =  User {
+        _id: ObjectId::new(),
+        name: payload.name.clone(),
+        email: encrypted_email.clone(),
+        role: encrypted_role.clone(),
+        password: formatted_pass_with_salt.clone(),
+        created_at: Some(DateTime::now()),
+        updated_at: Some(DateTime::now()),
+        email_verified: false,
+        is_active: true,
+        uid: uid.to_string(),
     };
 
-    db.collection("users")
-        .insert_one(user.clone(), None)
-        .await
-        .unwrap();
+    let collection: Collection<User> = db.collection("users");
+    collection.insert_one(&user, None).await.unwrap();
 
     // insert the dek and email kek in the deks collection by encrypting them with the server kek
     let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-    let encrypted_dek = encrypt_data(&key, &server_kek);
+    let encrypted_dek = encrypt_data(&dek, &server_kek);
     let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
     let encrypted_uid = encrypt_data(&uid.to_string(), &server_kek);
 
@@ -119,9 +118,22 @@ pub async fn signup_handler(
         .await
         .unwrap();
 
+    // issue a jwt token
+    let token = sign_jwt(&user, &dek).unwrap();
+
     let res = Json(json!({
         "message": "Signup successful",
-        "user": user,
+        "user": {
+            "name": payload.name,
+            "email": payload.email,
+            "role": payload.role,
+            "created_at": DateTime::now(),
+            "updated_at": DateTime::now(),
+            "email_verified": false,
+            "is_active": true,
+            "uid": uid.to_string(),
+            "token": token,
+        }
     }));
 
     Ok(res)
@@ -197,6 +209,8 @@ pub async fn signin_handler(
 
     // verify the password
     if verify_password(&payload.password, &salt, &password_hashed) {
+        // issue a jwt token
+        let token = sign_jwt(&user, &dek).unwrap();
         let res = Json(json!({
             "message": "Signin successful",
             "user": {
@@ -208,6 +222,7 @@ pub async fn signin_handler(
                 "email_verified": user.email_verified,
                 "is_active": user.is_active,
                 "uid": user.uid,
+                "token": token,
             },
         }));
 

@@ -19,6 +19,9 @@ pub enum Error {
     // -- Password Errors
     InvalidPassword { message: String },
     ResetPasswordLinkExpired { message: String },
+
+    // -- Session Errors
+    InvalidToken { message: String },
 }
 
 impl IntoResponse for Error {
@@ -59,6 +62,10 @@ impl Error {
                 (StatusCode::UNAUTHORIZED, ClientError::RESET_PASSWORD_LINK_EXPIRED)
             }
 
+            Self::InvalidToken { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::INVALID_TOKEN)
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -76,6 +83,7 @@ pub enum ClientError {
     USER_ALREADY_EXISTS,
     INVALID_PASSWORD,
     RESET_PASSWORD_LINK_EXPIRED,
+    INVALID_TOKEN
 }
 
 // region:    --- Error Boilerplate
