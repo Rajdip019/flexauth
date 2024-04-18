@@ -30,7 +30,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/", get(root_handler))
         .merge(routes::health_check_routes::routes())
         .merge(routes::user_routes::routes(State(app_state.clone())))
-        .merge(routes::password_routes::routes(State(app_state)))
+        .merge(routes::password_routes::routes(State(app_state.clone())))
+        .merge(routes::session_routes::routes())
         .layer(middleware::map_response(main_response_mapper));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
