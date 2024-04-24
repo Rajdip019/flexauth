@@ -39,6 +39,11 @@ pub struct UserEmail {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserId {
+    pub uid: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateUserPayload {
     pub name: String,
     pub email: String,
