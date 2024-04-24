@@ -3,7 +3,6 @@ use std::env;
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use bson::{doc, oid::ObjectId, uuid, DateTime};
-use chrono::Utc;
 use mongodb::Collection;
 use serde_json::{json, Value};
 
@@ -15,8 +14,8 @@ use crate::{
         user_model::User,
     },
     utils::{
-        encryption_utils::{create_dek, decrypt_data, encrypt_data},
-        hashing_utils::{salt_and_hash_password, verify_password},
+        encryption_utils::{add_dek_to_db, create_dek, decrypt_data, encrypt_data, encrypt_user},
+        hashing_utils::verify_password,
         session_utils::sign_jwt,
     },
     AppState,
@@ -58,41 +57,29 @@ pub async fn signup_handler(
         });
     }
 
-    // hash and salt the password
-    let hashed_and_salted_pass = salt_and_hash_password(&payload.password);
-
     let dek = create_dek(); // create a data encryption key for new user
-
-    // encrypt the password and salt with the dek
-    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
-
-    // format the password and salt with a delimiter
-    let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
-
-    // encrypt other sensitive data with the dek
-    let encrypted_email = encrypt_data(&payload.email, &dek);
-    let encrypted_role = encrypt_data(&payload.role, &dek);
 
     // create a new uid for the user
     let uid = uuid::Uuid::new();
 
-    // insert the user in the users collection
     let user = User {
         _id: ObjectId::new(),
+        uid: uid.to_string(),
         name: payload.name.clone(),
-        email: encrypted_email.clone(),
-        role: encrypted_role.clone(),
-        password: formatted_pass_with_salt.clone(),
-        created_at: Some(DateTime::now()),
-        updated_at: Some(DateTime::now()),
+        email: payload.email.clone(),
+        role: payload.role.clone(),
+        password: payload.password.clone(),
         email_verified: false,
         is_active: true,
-        uid: uid.to_string(),
+        created_at: Some(DateTime::now()),
+        updated_at: Some(DateTime::now()),
     };
 
+    // insert the user in the users collection
+    let encrypted_user = encrypt_user(&user, &dek);
+
     let collection: Collection<User> = db.collection("users");
-    collection.insert_one(&user, None).await.unwrap();
+    collection.insert_one(&encrypted_user, None).await.unwrap();
 
     // insert the dek and email kek in the deks collection by encrypting them with the server kek
     let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
@@ -100,19 +87,14 @@ pub async fn signup_handler(
     let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
     let encrypted_uid = encrypt_data(&uid.to_string(), &server_kek);
 
-    db.collection("deks")
-        .insert_one(
-            doc! {
-                "uid": encrypted_uid,
-                "email": encrypted_email_kek.clone(),
-                "dek": encrypted_dek,
-                "created_at": Utc::now(),
-                "updated_at": Utc::now(),
-            },
-            None,
-        )
-        .await
-        .unwrap();
+    let _ = add_dek_to_db(
+        encrypted_email_kek,
+        encrypted_uid,
+        encrypted_dek,
+        State(state.clone()),
+    )
+    .await
+    .unwrap();
 
     // issue a jwt token
     let token = sign_jwt(&user, &dek).unwrap();
