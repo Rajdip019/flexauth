@@ -22,6 +22,8 @@ pub enum Error {
 
     // -- Session Errors
     InvalidToken { message: String },
+    PublicKeyLoadError { message: String },
+    PrivateKeyLoadError { message: String },
 }
 
 impl IntoResponse for Error {
@@ -66,6 +68,14 @@ impl Error {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_TOKEN)
             }
 
+            Self::PublicKeyLoadError { message: _ } => {
+                (StatusCode::INTERNAL_SERVER_ERROR, ClientError::SERVICE_ERROR)
+            }
+
+            Self::PrivateKeyLoadError { message: _ } => {
+                (StatusCode::INTERNAL_SERVER_ERROR, ClientError::SERVICE_ERROR)
+            }
+            
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -83,7 +93,7 @@ pub enum ClientError {
     USER_ALREADY_EXISTS,
     INVALID_PASSWORD,
     RESET_PASSWORD_LINK_EXPIRED,
-    INVALID_TOKEN
+    INVALID_TOKEN,
 }
 
 // region:    --- Error Boilerplate
