@@ -16,6 +16,6 @@ pub async fn verify_jwt_handler(
     // verify the token
     let _ = match verify_jwt(&payload.token) {
         Ok(val) => return Ok(Json(json!(*val))),
-        Err(e) => return Err(Error::InvalidToken { message: e.to_string() }),
+        Err(e) => return Err(e),
     };
 }
