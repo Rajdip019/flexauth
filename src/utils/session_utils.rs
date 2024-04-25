@@ -37,7 +37,7 @@ fn load_private_key() -> Result<Vec<u8>, Error> {
     match private_key.private_key_to_pem_pkcs8() {
         Ok(key) => return Ok(key),
         Err(_) => {
-            return Err(Error::PublicKeyLoadError {
+            return Err(Error::PrivateKeyLoadError {
                 message: "Error loading private key".to_string(),
             });
         }
@@ -72,9 +72,8 @@ pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Error> {
             return Err(Error::PublicKeyLoadError { message: (err.to_string()) })
         }
     };
-    let token = jwt::encode(
-        &header,
-        &IDTokenClaims {
+
+    let claims: IDTokenClaims = IDTokenClaims {
             uid: user.uid.clone(),
             iss: server_url,
             iat: chrono::Utc::now().timestamp() as usize,
@@ -94,10 +93,14 @@ pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Error> {
                 .collect(),
             ),
             token_type: "id_token".to_string(),
-        },
-        &encoding_key,
-    )
-    .unwrap();
+    };
+
+    let token = match jwt::encode(&header, &claims, &encoding_key) {
+        Ok(token) => token,
+        Err(err) => return Err(Error::IdTokenCreationError {
+            message: err.to_string(),
+        }),
+    };
 
     Ok(token)
 }
@@ -123,10 +126,25 @@ pub fn verify_jwt(token: &str) -> Result<Json<Value>, Error> {
                 "data": token_data
             })))
         }
-        Err(e) => Ok(Json(json!({
-            "valid": false,
-            "error": e.to_string()
-        }))),
+        Err(e) => match e {
+            // check if ExpiredSignature 
+            _ if e.to_string().contains("ExpiredSignature") => {
+                return Err(Error::ExpiredSignature {
+                    message: "Expired signature".to_string(),
+                })
+            }
+            // check if InvalidSignature
+            _ if e.to_string().contains("InvalidSignature") => {
+                return Err(Error::SignatureVerificationError {
+                    message: "Invalid signature".to_string(),
+                })
+            }
+            _ => {
+                return Err(Error::InvalidToken {
+                    message: "Invalid token".to_string(),
+                })
+            }
+        },
     }
 }
 
