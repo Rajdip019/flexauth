@@ -29,6 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = Router::new()
         .route("/", get(root_handler))
         .merge(routes::health_check_routes::routes())
+        .merge(routes::auth_routes::routes(State(app_state.clone())))
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
         .merge(routes::session_routes::routes())
