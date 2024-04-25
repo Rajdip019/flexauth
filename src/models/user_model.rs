@@ -28,20 +28,6 @@ pub struct User {
     pub updated_at: Option<DateTime>,
 }
 
-#[derive(Deserialize, Debug, Clone, Serialize)]
-pub struct SignUpPayload {
-    pub name: String,
-    pub email: String,
-    pub password: String,
-    pub role: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignInPayload {
-    pub email: String,
-    pub password: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserList {
     pub users: Vec<User>,
@@ -50,6 +36,11 @@ pub struct UserList {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserEmail {
     pub email: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserId {
+    pub uid: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
