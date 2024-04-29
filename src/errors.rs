@@ -27,6 +27,11 @@ pub enum Error {
 
     // -- Encryption Errors
     KeyNotFound { message: String },
+    PublicKeyLoadError { message: String },
+    PrivateKeyLoadError { message: String },
+    SignatureVerificationError { message: String },
+    ExpiredSignature { message: String },
+    IdTokenCreationError { message: String },
 }
 
 impl IntoResponse for Error {
@@ -47,10 +52,12 @@ impl Error {
     pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
         #[allow(unreachable_patterns)]
         match self {
+            // -- Model errors
             Self::InvalidPayload { message: _ } => {
                 (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
             }
 
+            // -- User Errors
             Self::UserNotFound { message: _ } => {
                 (StatusCode::NOT_FOUND, ClientError::USER_NOT_FOUND)
             }
@@ -59,6 +66,7 @@ impl Error {
                 (StatusCode::FOUND, ClientError::USER_ALREADY_EXISTS)
             }
 
+            // -- Password Errors
             Self::InvalidPassword { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_PASSWORD)
             }
@@ -73,11 +81,35 @@ impl Error {
                 ClientError::RESET_PASSWORD_LINK_EXPIRED,
             ),
 
+            // -- Session Errors
+            Self::PublicKeyLoadError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+
+            Self::PrivateKeyLoadError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+
+            Self::SignatureVerificationError { message: _ } => (
+                StatusCode::UNAUTHORIZED,
+                ClientError::SIGNATURE_VERIFICATION_ERROR,
+            ),
+
+            Self::ExpiredSignature { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::EXPIRED_SIGNATURE)
+            }
+
             Self::InvalidToken { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_TOKEN)
             }
 
             Self::ServerError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+            Self::IdTokenCreationError { message: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
             ),
@@ -100,6 +132,8 @@ pub enum ClientError {
     INVALID_PASSWORD,
     RESET_PASSWORD_LINK_EXPIRED,
     INVALID_TOKEN,
+    SIGNATURE_VERIFICATION_ERROR,
+    EXPIRED_SIGNATURE,
 }
 
 // region:    --- Error Boilerplate
