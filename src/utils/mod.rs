@@ -1,3 +1,4 @@
+pub mod auth_utils;
 pub mod dek_utils;
 pub mod email_utils;
 pub mod encryption_utils;
