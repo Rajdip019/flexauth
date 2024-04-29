@@ -97,7 +97,15 @@ pub async fn signup_handler(
     .unwrap();
 
     // issue a jwt token
-    let token = sign_jwt(&user, &dek).unwrap();
+    let token = match sign_jwt(&user, &dek) {
+        Ok(token) => token,
+        Err(err) => {
+            eprintln!("Error signing jwt token: {}", err);
+            return Err(Error::IdTokenCreationError {
+                message: err.to_string(),
+            });
+        }
+    };
 
     let res = Json(json!({
         "message": "Signup successful",
@@ -191,7 +199,15 @@ pub async fn signin_handler(
     // verify the password
     if verify_password(&payload.password, &salt, &password_hashed) {
         // issue a jwt token
-        let token = sign_jwt(&user, &dek).unwrap();
+        let token = match sign_jwt(&user, &dek) {
+            Ok(token) => token,
+            Err(err) => {
+                eprintln!("Error signing jwt token: {}", err);
+                return Err(Error::IdTokenCreationError {
+                    message: err.to_string(),
+                });
+            }
+        };
         let res = Json(json!({
             "message": "Signin successful",
             "user": {
