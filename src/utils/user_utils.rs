@@ -62,7 +62,6 @@ impl User {
 
                 // encrypt the email using kek
                 let encrypted_email_kek = encrypt_data(&email, &server_kek);
-
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
@@ -112,6 +111,7 @@ impl User {
                         });
                     }
                 };
+
                 Ok(user_data)
             }
         }

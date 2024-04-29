@@ -170,13 +170,6 @@ pub async fn get_user_handler(
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: get_user_handler called");
 
-    // check if the payload is empty
-    if payload.email.is_empty() {
-        return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
-        });
-    }
-
     let user = User::get_user_from_email(&state.mongo_client, &payload.email)
         .await
         .unwrap();
