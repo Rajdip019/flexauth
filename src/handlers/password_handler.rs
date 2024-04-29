@@ -1,14 +1,25 @@
 use crate::{
     errors::{Error, Result},
-    models::{dek_model::Dek, forget_password_req_model::{ForgetPasswordRequest, ForgetPasswordRequestPayload, ForgetPasswordResetPayload, NewForgetPasswordRequest}, password_model::ResetPasswordPayload, user_model::User},
+    models::{
+        dek_model::Dek,
+        forget_password_req_model::{
+            ForgetPasswordRequest, ForgetPasswordRequestPayload, ForgetPasswordResetPayload,
+            NewForgetPasswordRequest,
+        },
+        password_model::ResetPasswordPayload,
+        user_model::User,
+    },
     utils::{
-        email::{send_email, Email},
+        email_utils::Email,
         encryption_utils::{decrypt_data, encrypt_data},
         hashing_utils::{salt_and_hash_password, verify_password},
     },
     AppState,
 };
-use axum::{extract::{Path, State}, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use axum_macros::debug_handler;
 use bson::{doc, uuid, DateTime};
 use mongodb::Collection;
@@ -92,7 +103,7 @@ pub async fn reset_password_handler(
         .unwrap();
 
     // send a email to the user that the password has been updated
-    send_email(Email {
+    Email::send_email(&Email {
         name: user.name,
         email: payload.email.clone(),
         subject: "Password Updated".to_string(),
@@ -121,7 +132,10 @@ pub async fn forgot_password_request_handler(
     let dek_collection: Collection<Dek> = db.collection("deks");
 
     let dek_data = dek_collection
-        .find_one(doc! { "email": encrypt_data(&payload.email, &env::var("SERVER_KEK").unwrap()) }, None)
+        .find_one(
+            doc! { "email": encrypt_data(&payload.email, &env::var("SERVER_KEK").unwrap()) },
+            None,
+        )
         .await
         .unwrap()
         .unwrap();
@@ -160,10 +174,13 @@ pub async fn forgot_password_request_handler(
         updated_at: DateTime::now(),
     };
 
-    db.collection("forget_password_requests").insert_one(new_doc.clone(), None).await.unwrap();
+    db.collection("forget_password_requests")
+        .insert_one(new_doc.clone(), None)
+        .await
+        .unwrap();
 
     // send a email to the user with the link having id of the new doc
-    send_email(Email {
+    Email::send_email(&Email {
         name: "User".to_string(),
         email: payload.email.clone(),
         subject: "Reset Password".to_string(),
@@ -191,7 +208,8 @@ pub async fn forget_reset_password_handler(
     let db = state.mongo_client.database("test");
     let dek_collection: Collection<Dek> = db.collection("deks");
     let user_collection: Collection<User> = db.collection("users");
-    let forget_password_requests_collection: Collection<ForgetPasswordRequest> = db.collection("forget_password_requests");
+    let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
+        db.collection("forget_password_requests");
 
     println!("id: {}", id);
 
@@ -299,7 +317,7 @@ pub async fn forget_reset_password_handler(
         .unwrap();
 
     // send a email to the user that the password has been updated
-    send_email(Email {
+    Email::send_email(&Email {
         name: user.name,
         email: payload.email.clone(),
         subject: "Password Updated".to_string(),

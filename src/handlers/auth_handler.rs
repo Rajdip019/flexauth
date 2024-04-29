@@ -114,7 +114,10 @@ pub async fn signup_handler(
         }
     }));
 
-    Ok(res)
+    match user.add(&state.mongo_client).await {
+        Ok(uid) => return Ok(Json(json!({ "uid": uid }))),
+        Err(e) => return Err(e),
+    };
 }
 
 pub async fn signin_handler(
