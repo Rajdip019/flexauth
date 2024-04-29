@@ -39,7 +39,10 @@ pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Box<dyn Error>> {
                     ("display_name".to_string(), user.name.to_string()),
                     ("role".to_string(), role),
                     ("is_active".to_string(), user.is_active.to_string()),
-                    ("is_email_verified".to_string(), user.email_verified.to_string()),
+                    (
+                        "is_email_verified".to_string(),
+                        user.email_verified.to_string(),
+                    ),
                 ]
                 .iter()
                 .cloned()
