@@ -6,20 +6,19 @@ use mongodb::{Client, Collection};
 use serde_json::{json, Value};
 
 use crate::{
+    core::user::User,
     errors::{Error, Result},
-    models::{
-        auth_model::{SignInPayload, SignUpPayload},
-        dek_model::Dek,
-        user_model::User,
-    },
+    models::auth_model::{SignInPayload, SignUpPayload},
+    traits::decryption::Decrypt,
     utils::{
-        encryption_utils::{add_dek_to_db, create_dek, decrypt_data, encrypt_data},
+        encryption_utils::{add_dek_to_db, create_dek, encrypt_data},
         hashing_utils::verify_password,
         session_utils::sign_jwt,
+        user_utils::get_user_dek,
     },
 };
 
-pub async fn signUp(mongo_client: &Client, payload: Json<SignUpPayload>) -> Result<Json<Value>> {
+pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Result<Json<Value>> {
     println!(">> HANDLER: add_user_handler called");
     // check if the payload is empty
     if payload.name.is_empty()
@@ -69,7 +68,7 @@ pub async fn signUp(mongo_client: &Client, payload: Json<SignUpPayload>) -> Resu
         updated_at: Some(DateTime::now()),
     };
 
-    User::add(&user, mongo_client).await.unwrap();
+    User::encrypt_and_add(&user, mongo_client).await.unwrap();
 
     // insert the dek and email kek in the deks collection by encrypting them with the server kek
     let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
@@ -112,13 +111,13 @@ pub async fn signUp(mongo_client: &Client, payload: Json<SignUpPayload>) -> Resu
         }
     }));
 
-    match user.add(&mongo_client).await {
+    match user.encrypt_and_add(&mongo_client).await {
         Ok(_) => return Ok(res),
         Err(e) => return Err(e),
     };
 }
 
-pub async fn signIn(mongo_client: &Client, payload: Json<SignInPayload>) -> Result<Json<Value>> {
+pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Result<Json<Value>> {
     println!(">> HANDLER: signin_handler called");
 
     // check if the payload is empty
@@ -127,20 +126,20 @@ pub async fn signIn(mongo_client: &Client, payload: Json<SignInPayload>) -> Resu
             message: "Invalid payload".to_string(),
         });
     }
-
-    // encrypt the email using kek
-    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-    let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
-
-    println!(">> Encrypted email kek: {:?}", encrypted_email_kek);
-
-    // find the user in the dek collection using the encrypted email
     let db = mongo_client.database("test");
-    let collection: Collection<Dek> = db.collection("deks");
+
+    let dek_data = match get_user_dek(&mongo_client, &payload.email).await {
+        Ok(dek) => dek,
+        Err(e) => return Err(e),
+    };
+
+    let encrypted_uid = encrypt_data(&dek_data.uid, &dek_data.dek);
+    // find the user in the users collection using the uid
+    let collection: Collection<User> = db.collection("users");
     let cursor = collection
         .find_one(
             Some(doc! {
-                "email": encrypted_email_kek.clone(),
+                "uid": encrypted_uid
             }),
             None,
         )
@@ -148,47 +147,18 @@ pub async fn signIn(mongo_client: &Client, payload: Json<SignInPayload>) -> Resu
         .unwrap();
 
     if cursor.is_none() {
-        return Err(Error::KeyNotFound {
-            message: "Dek not found".to_string(),
-        });
-    }
-
-    let dek_data = cursor.unwrap();
-    // decrypt the dek using the server kek
-    let dek = decrypt_data(&dek_data.dek, &server_kek);
-    let uid = decrypt_data(&dek_data.uid, &server_kek);
-    println!(">> uid: {:?}", uid);
-
-    // find the user in the users collection using the uid
-    let collection: Collection<User> = db.collection("users");
-    let user_cursor = collection
-        .find_one(
-            Some(doc! {
-                "uid": &uid,
-            }),
-            None,
-        )
-        .await
-        .unwrap();
-
-    if user_cursor.is_none() {
-        println!("User not found");
         return Err(Error::UserNotFound {
             message: "User not found".to_string(),
         });
     }
 
-    let user = user_cursor.unwrap();
-    println!(">> User: {:?}", user);
-
-    // decrypt the password and salt using the dek
-    let password_hashed = decrypt_data(user.password.split('.').collect::<Vec<&str>>()[0], &dek);
-    let salt = decrypt_data(user.password.split('.').collect::<Vec<&str>>()[1], &dek);
+    let mut user: User = cursor.unwrap();
+    let decrypted_user = user.decrypt(&dek_data.dek);
 
     // verify the password
-    if verify_password(&payload.password, &salt, &password_hashed) {
+    if verify_password(&payload.password, &decrypted_user.password) {
         // issue a jwt token
-        let token = match sign_jwt(&user, &dek) {
+        let token = match sign_jwt(&user, &dek_data.dek) {
             Ok(token) => token,
             Err(err) => {
                 eprintln!("Error signing jwt token: {}", err);
@@ -200,14 +170,14 @@ pub async fn signIn(mongo_client: &Client, payload: Json<SignInPayload>) -> Resu
         let res = Json(json!({
             "message": "Signin successful",
             "user": {
-                "name": user.name,
-                "email": decrypt_data(&user.email, &dek),
-                "role": decrypt_data(&user.role, &dek),
-                "created_at": user.created_at,
-                "updated_at": user.updated_at,
-                "email_verified": user.email_verified,
-                "is_active": user.is_active,
-                "uid": user.uid,
+                "uid": decrypted_user.uid,
+                "name": decrypted_user.name,
+                "email": decrypted_user.email,
+                "role": decrypted_user.role,
+                "created_at": decrypted_user.created_at,
+                "updated_at": decrypted_user.updated_at,
+                "email_verified": decrypted_user.email_verified,
+                "is_active": decrypted_user.is_active,
                 "token": token,
             },
         }));

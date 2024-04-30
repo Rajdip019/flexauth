@@ -5,7 +5,7 @@ use serde_json::Value;
 use crate::{
     errors::Result,
     models::auth_model::{SignInPayload, SignUpPayload},
-    utils::auth_utils::{signIn, signUp},
+    utils::auth_utils::{sign_in, sign_up},
     AppState,
 };
 
@@ -16,9 +16,10 @@ pub async fn signup_handler(
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: signup_handler called");
 
-    let res = signUp(&state.mongo_client, payload).await.unwrap();
-
-    Ok(res)
+    match sign_up(&state.mongo_client, payload).await {
+        Ok(res) => Ok(res),
+        Err(e) => Err(e),
+    }
 }
 
 pub async fn signin_handler(
@@ -27,7 +28,8 @@ pub async fn signin_handler(
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: signin_handler called");
 
-    let res = signIn(&state.mongo_client, payload).await?;
-
-    Ok(res)
+    match sign_in(&state.mongo_client, payload).await {
+        Ok(res) => Ok(res),
+        Err(e) => Err(e),
+    }
 }

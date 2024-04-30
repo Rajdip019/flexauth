@@ -1,20 +1,16 @@
 use crate::{
-    errors::{Error, Result},
-    models::{
+    core::user::User, errors::{Error, Result}, models::{
         dek_model::Dek,
         forget_password_req_model::{
             ForgetPasswordRequest, ForgetPasswordRequestPayload, ForgetPasswordResetPayload,
             NewForgetPasswordRequest,
         },
         password_model::ResetPasswordPayload,
-        user_model::User,
-    },
-    utils::{
+    }, utils::{
         email_utils::Email,
         encryption_utils::{decrypt_data, encrypt_data},
         hashing_utils::{salt_and_hash_password, verify_password},
-    },
-    AppState,
+    }, AppState
 };
 use axum::{
     extract::{Path, State},
@@ -68,11 +64,10 @@ pub async fn reset_password_handler(
         .unwrap();
 
     // decrypt the password and salt using the dek
-    let password_hashed = decrypt_data(user.password.split('.').collect::<Vec<&str>>()[0], &dek);
-    let salt = decrypt_data(user.password.split('.').collect::<Vec<&str>>()[1], &dek);
+    let password_hashed = decrypt_data(&user.password, &dek);
 
     // verify the password
-    let is_valid = verify_password(&payload.old_password, &salt, &password_hashed);
+    let is_valid = verify_password(&payload.old_password, &password_hashed);
     println!("is_valid: {}", is_valid);
 
     if !is_valid {
@@ -84,8 +79,7 @@ pub async fn reset_password_handler(
     // hash and salt the new password
     let hashed_and_salted_pass = salt_and_hash_password(&payload.new_password);
     // encrypt the new password
-    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
+    let encrypted_password = encrypt_data(&hashed_and_salted_pass, &dek);
 
     // update the user with the new password
     user_collection
@@ -93,7 +87,7 @@ pub async fn reset_password_handler(
             doc! { "email": encrypt_data(&payload.email, &dek) },
             doc! {
                 "$set": {
-                    "password": format!("{}.{}", encrypted_password, encrypted_salt),
+                    "password": encrypted_password,
                     "updated_at": DateTime::now(),
                 }
             },
@@ -283,8 +277,7 @@ pub async fn forget_reset_password_handler(
     // hash and salt the new password
     let hashed_and_salted_pass = salt_and_hash_password(&payload.password);
     // encrypt the new password
-    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
+    let encrypted_password = encrypt_data(&hashed_and_salted_pass, &dek);
 
     // update the user with the new password
     user_collection
@@ -292,7 +285,7 @@ pub async fn forget_reset_password_handler(
             doc! { "email": encrypt_data(&payload.email, &dek) },
             doc! {
                 "$set": {
-                    "password": format!("{}.{}", encrypted_password, encrypted_salt),
+                    "password": encrypted_password,
                     "updated_at": DateTime::now(),
                 }
             },

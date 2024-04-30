@@ -2,11 +2,7 @@ use mongodb::{Client, Collection};
 use std::env;
 
 use crate::{
-    models::{dek_model::Dek, user_model::User},
-    utils::{
-        encryption_utils::{create_dek, encrypt_data},
-        hashing_utils::salt_and_hash_password,
-    },
+    core::user::User, models::dek_model::Dek, utils::encryption_utils::encrypt_data,
 };
 
 struct InitUser {
@@ -51,31 +47,15 @@ pub async fn init_users(mongo_client: Client) {
 
     // map the users
     for user in users {
-        let dek = create_dek();
-        // hash and salt the password
-        let hashed_and_salted_pass = salt_and_hash_password(&user.password);
-
-        // encrypt sensitive data
-        let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-        let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
-        let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
-        let encrypted_email = encrypt_data(&user.email, &dek);
-        let encrypted_role = encrypt_data(&user.role, &dek);
-
         // create a new user
-        let new_user = User::new_user(
-            &user.name,
-            &encrypted_email,
-            &encrypted_role,
-            &formatted_pass_with_salt,
-        );
-
-        // add user to the database
-        let db = mongo_client.database("test");
-        db.collection("users")
-            .insert_one(new_user.clone(), None)
-            .await
-            .unwrap();
+        let new_user = User::new_user(&user.name, &user.email, &user.role, &user.password);
+        let dek = match new_user.encrypt_and_add(&mongo_client).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                println!(">> Error adding user: {:?}", e);
+                continue;
+            }
+        };
 
         // encrypt the data with kek
         let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");

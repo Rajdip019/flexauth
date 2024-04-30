@@ -4,17 +4,12 @@ use aes_gcm::{
 };
 
 use axum::Json;
-use bson::{doc, oid::ObjectId, DateTime};
+use bson::doc;
 use chrono::Utc;
 use mongodb::Client;
 use serde_json::{json, Value};
 
-use crate::{
-    errors::Result,
-    models::user_model::{User, UserResponse},
-};
-
-use super::hashing_utils::salt_and_hash_password;
+use crate::errors::Result;
 
 pub fn create_dek() -> String {
     let key = Aes256Gcm::generate_key(OsRng);
@@ -63,51 +58,6 @@ pub fn decrypt_data(cipher_text: &str, key_iv: &str) -> String {
         .decrypt(key_iv_vec[1].as_bytes().into(), cipher_text.as_ref())
         .unwrap();
     return String::from_utf8(data).unwrap();
-}
-
-pub fn encrypt_user(user: &User, dek: &str) -> User {
-    // hash and salt the password
-    let hashed_and_salted_pass = salt_and_hash_password(user.password.as_str());
-
-    // encrypt the password and salt with the dek
-    let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-    let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
-
-    // format the password and salt with a delimiter
-    let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
-
-    // encrypt other sensitive data with the dek
-    let encrypted_email = encrypt_data(&user.email, &dek);
-    let encrypted_role = encrypt_data(&user.role, &dek);
-
-    let user = User {
-        _id: ObjectId::new(),
-        name: user.name.clone(),
-        email: encrypted_email.clone(),
-        role: encrypted_role.clone(),
-        password: formatted_pass_with_salt.clone(),
-        created_at: Some(DateTime::now()),
-        updated_at: Some(DateTime::now()),
-        email_verified: false,
-        is_active: true,
-        uid: user.uid.to_string(),
-    };
-
-    user
-}
-
-pub fn decrypted_user(user: &User, dek: &str) -> UserResponse {
-    let decrypted_user = UserResponse {
-        name: user.name.clone(),
-        email: decrypt_data(&user.email, &dek),
-        role: decrypt_data(&user.role, &dek),
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-        email_verified: user.email_verified,
-        is_active: user.is_active,
-        uid: user.uid.clone(),
-    };
-    decrypted_user
 }
 
 pub async fn add_dek_to_db(
