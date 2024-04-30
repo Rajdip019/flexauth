@@ -5,11 +5,13 @@ use mongodb::Client;
 use std::error::Error;
 
 mod config;
+mod core;
 mod errors;
 mod handlers;
 mod middlewares;
 mod models;
 mod routes;
+mod traits;
 mod utils;
 
 #[derive(Clone)]

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{collections::HashMap, env, fs};
 
-use crate::{errors::Error, models::user_model::User};
+use crate::{core::user::User, errors::Error};
 
 use super::encryption_utils::decrypt_data;
 

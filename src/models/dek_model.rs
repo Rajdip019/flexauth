@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct Dek {
-    _id: ObjectId,
+    pub _id: ObjectId,
     pub uid: String,
     pub email: String,
     pub dek: String,
