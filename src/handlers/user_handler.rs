@@ -7,10 +7,7 @@ use crate::{
             UserEmail,
         },
     },
-    utils::{
-        encryption_utils::{decrypt_data, decrypted_user, encrypt_data},
-        user_utils::{delete_user, get_all_users, toggle_user_activation, update_user_role},
-    },
+    utils::encryption_utils::{decrypt_data, encrypt_data},
     AppState,
 };
 use axum::{extract::State, Json};
@@ -18,7 +15,6 @@ use axum_macros::debug_handler;
 use bson::{doc, DateTime};
 use mongodb::Collection;
 use serde::de::DeserializeOwned;
-// use mongodb::Client;
 use serde_json::{json, Value};
 use std::env;
 
@@ -30,9 +26,11 @@ trait MongoDbModel: DeserializeOwned + Sync + Send + Unpin {
 pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json<Value>> {
     println!(">> HANDLER: get_user_handler called");
 
-    let res = get_all_users(State(state)).await.unwrap();
+    let res = User::get_all_users(&state.mongo_client).await.unwrap();
 
-    Ok(res)
+    Ok(Json(json!({
+        "users": res,
+    })))
 }
 
 pub async fn update_user_handler(
@@ -126,7 +124,7 @@ pub async fn update_user_role_handler(
         });
     }
 
-    let res = update_user_role(State(state), payload.email.clone(), payload.role.clone())
+    let res = User::update_user_role(&State(state).mongo_client, &payload.email, &payload.role)
         .await
         .unwrap();
 
@@ -154,10 +152,10 @@ pub async fn toggle_user_activation_status(
         }
     }
 
-    let res = toggle_user_activation(
-        State(state),
-        payload.email.clone(),
-        payload.is_active.unwrap(),
+    let res = User::toggle_user_activation(
+        &State(state).mongo_client,
+        &payload.email,
+        &payload.is_active.unwrap(),
     )
     .await
     .unwrap();
@@ -172,64 +170,9 @@ pub async fn get_user_handler(
 ) -> Result<Json<Value>> {
     println!(">> HANDLER: get_user_handler called");
 
-    // check if the payload is empty
-    if payload.email.is_empty() {
-        return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
-        });
-    }
-    let db = state.mongo_client.database("test");
-    let collection_user: Collection<User> = db.collection("users");
-    let collection_dek: Collection<Dek> = db.collection("deks");
-
-    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-
-    // encrypt the email using kek
-    let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
-
-    let cursor_dek = collection_dek
-        .find_one(
-            Some(doc! {
-                "email": encrypted_email_kek.clone(),
-            }),
-            None,
-        )
+    let user = User::get_user_from_email(&state.mongo_client, &payload.email)
         .await
         .unwrap();
-
-    if cursor_dek.is_none() {
-        return Err(Error::UserNotFound {
-            message: "User not found".to_string(),
-        });
-    }
-
-    let dek_data = cursor_dek.unwrap();
-
-    // decrypt the dek using the server kek
-    let dek = decrypt_data(&dek_data.dek, &server_kek);
-    let uid = decrypt_data(&dek_data.uid, &server_kek);
-
-    // find the user in the users collection using the uid
-    let user_cursor = collection_user
-        .find_one(
-            Some(doc! {
-                "uid": uid.clone(),
-            }),
-            None,
-        )
-        .await
-        .unwrap();
-
-    // Return Error if User is not there
-    if user_cursor.is_none() {
-        return Err(Error::UserNotFound {
-            message: "User not found".to_string(),
-        });
-    }
-
-    let user_data = user_cursor.unwrap();
-
-    let user = decrypted_user(&user_data, &dek);
 
     Ok(Json(json!({
         "message": "User found",
@@ -250,7 +193,7 @@ pub async fn delete_user_handler(
         });
     }
 
-    let res = delete_user(State(state), payload.email.clone())
+    let res = User::delete_user(&State(state).mongo_client, &payload.email)
         .await
         .unwrap();
 

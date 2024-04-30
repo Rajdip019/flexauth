@@ -2,12 +2,10 @@ use mongodb::{Client, Collection};
 use std::env;
 
 use crate::{
-    models::user_model::User,
+    models::{dek_model::Dek, user_model::User},
     utils::{
-        dek_utils::new_dek,
         encryption_utils::{create_dek, encrypt_data},
         hashing_utils::salt_and_hash_password,
-        user_utils::new_user,
     },
 };
 
@@ -65,11 +63,11 @@ pub async fn init_users(mongo_client: Client) {
         let encrypted_role = encrypt_data(&user.role, &dek);
 
         // create a new user
-        let new_user = new_user(
-            user.name,
-            encrypted_email,
-            encrypted_role,
-            formatted_pass_with_salt,
+        let new_user = User::new_user(
+            &user.name,
+            &encrypted_email,
+            &encrypted_role,
+            &formatted_pass_with_salt,
         );
 
         // add user to the database
@@ -85,7 +83,7 @@ pub async fn init_users(mongo_client: Client) {
         let encrypted_email_kek = encrypt_data(&user.email, &server_kek);
         let encrypted_uid = encrypt_data(&new_user.uid.to_string(), &server_kek);
 
-        let dek_data = new_dek(encrypted_uid, encrypted_email_kek, encrypted_dek);
+        let dek_data = Dek::new_dek(&encrypted_uid, &encrypted_email_kek, &encrypted_dek);
 
         // add the dek to the database
         db.collection("deks")

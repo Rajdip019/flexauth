@@ -69,37 +69,41 @@ pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Error> {
         Ok(key) => key,
         Err(err) => {
             eprintln!("Error creating decoding key: {}", err);
-            return Err(Error::PublicKeyLoadError { message: (err.to_string()) })
+            return Err(Error::PublicKeyLoadError {
+                message: (err.to_string()),
+            });
         }
     };
 
     let claims: IDTokenClaims = IDTokenClaims {
-            uid: user.uid.clone(),
-            iss: server_url,
-            iat: chrono::Utc::now().timestamp() as usize,
-            exp: chrono::Utc::now().timestamp() as usize + 3600,
-            data: Some(
-                [
-                    ("display_name".to_string(), user.name.to_string()),
-                    ("role".to_string(), role),
-                    ("is_active".to_string(), user.is_active.to_string()),
-                    (
-                        "is_email_verified".to_string(),
-                        user.email_verified.to_string(),
-                    ),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            ),
-            token_type: "id_token".to_string(),
+        uid: user.uid.clone(),
+        iss: server_url,
+        iat: chrono::Utc::now().timestamp() as usize,
+        exp: chrono::Utc::now().timestamp() as usize + 3600,
+        data: Some(
+            [
+                ("display_name".to_string(), user.name.to_string()),
+                ("role".to_string(), role),
+                ("is_active".to_string(), user.is_active.to_string()),
+                (
+                    "is_email_verified".to_string(),
+                    user.email_verified.to_string(),
+                ),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        ),
+        token_type: "id_token".to_string(),
     };
 
     let token = match jwt::encode(&header, &claims, &encoding_key) {
         Ok(token) => token,
-        Err(err) => return Err(Error::IdTokenCreationError {
-            message: err.to_string(),
-        }),
+        Err(err) => {
+            return Err(Error::IdTokenCreationError {
+                message: err.to_string(),
+            })
+        }
     };
 
     Ok(token)
@@ -113,12 +117,13 @@ pub fn verify_jwt(token: &str) -> Result<Json<Value>, Error> {
         Ok(key) => key,
         Err(err) => {
             eprintln!("Error creating decoding key: {}", err);
-            return Err(Error::PublicKeyLoadError { message: (err.to_string()) })
+            return Err(Error::PublicKeyLoadError {
+                message: (err.to_string()),
+            });
         }
     };
     // return false if the token is not valid
-    match jwt::decode::<IDTokenClaims>(&token, &decoding_key, &validation)
-    {
+    match jwt::decode::<IDTokenClaims>(&token, &decoding_key, &validation) {
         Ok(val) => {
             let token_data = val.claims;
             Ok(Json(json!({
@@ -127,7 +132,7 @@ pub fn verify_jwt(token: &str) -> Result<Json<Value>, Error> {
             })))
         }
         Err(e) => match e {
-            // check if ExpiredSignature 
+            // check if ExpiredSignature
             _ if e.to_string().contains("ExpiredSignature") => {
                 return Err(Error::ExpiredSignature {
                     message: "Expired signature".to_string(),
