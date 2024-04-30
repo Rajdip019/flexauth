@@ -12,7 +12,16 @@ pub struct Email {
 }
 
 impl Email {
-    pub async fn send_email(&self) {
+    pub fn new(name: &str, email: &str, subject: &str, body:&str) -> Self {
+        Email {
+            name: name.to_string(),
+            email: email.to_string(),
+            subject: subject.to_string(),
+            body: body.to_string(),
+        }
+    }
+
+    pub async fn send(&self) {
         let smtp_username = env::var("EMAIL").expect("EMAIL_ID must be set");
         let smtp_password = env::var("EMAIL_PASSWORD").expect("EMAIL_PASSWORD must be set");
         let name = env::var("MAIL_NAME").expect("NAME must be set");

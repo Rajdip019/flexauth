@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let app_state = AppState { mongo_client };
     // run the server
-    let app = Router::new()
+    let routes = Router::new()
         .route("/", get(root_handler))
         .merge(routes::health_check_routes::routes())
         .merge(routes::auth_routes::routes(State(app_state.clone())))
@@ -36,6 +36,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(routes::password_routes::routes(State(app_state.clone())))
         .merge(routes::session_routes::routes())
         .layer(middleware::map_response(main_response_mapper));
+
+    let app = Router::new().nest("/api", routes);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve::serve(listener, app.into_make_service())

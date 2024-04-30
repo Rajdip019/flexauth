@@ -1,39 +1,6 @@
 use aes_gcm::{
-    aead::{Aead, OsRng},
-    AeadCore, Aes256Gcm, Key, KeyInit,
+    aead::Aead, Aes256Gcm, Key, KeyInit,
 };
-
-use axum::Json;
-use bson::doc;
-use chrono::Utc;
-use mongodb::Client;
-use serde_json::{json, Value};
-
-use crate::errors::Result;
-
-pub fn create_dek() -> String {
-    let key = Aes256Gcm::generate_key(OsRng);
-    // convert the key to hex string
-    let hex_key = key
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
-        .chars()
-        .take(32)
-        .collect::<String>();
-    let iv = Aes256Gcm::generate_nonce(&mut OsRng);
-    // convert the iv to hex string
-    let hex_iv = iv
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
-        .chars()
-        .take(12)
-        .collect::<String>();
-    // connect the key and iv with . between them
-    let key_iv = format!("{}.{}", hex_key, hex_iv);
-    return key_iv;
-}
 
 pub fn encrypt_data(data: &str, key_iv: &str) -> String {
     // split the key_iv into key and iv
@@ -58,33 +25,4 @@ pub fn decrypt_data(cipher_text: &str, key_iv: &str) -> String {
         .decrypt(key_iv_vec[1].as_bytes().into(), cipher_text.as_ref())
         .unwrap();
     return String::from_utf8(data).unwrap();
-}
-
-pub async fn add_dek_to_db(
-    encrypted_email: &str,
-    encrypted_uid: &str,
-    encrypted_dek: &str,
-    mongo_client: &Client,
-) -> Result<Json<Value>> {
-    let db = mongo_client.database("test");
-
-    db.collection("deks")
-        .insert_one(
-            doc! {
-                "uid": encrypted_uid,
-                "email": encrypted_email,
-                "dek": encrypted_dek,
-                "created_at": Utc::now(),
-                "updated_at": Utc::now(),
-            },
-            None,
-        )
-        .await
-        .unwrap();
-
-    let res = Json(json!({
-        "message": "DEK added successfully"
-    }));
-
-    Ok(res)
 }

@@ -6,8 +6,9 @@ use crate::{
 };
 
 pub fn routes(State(state): State<AppState>) -> Router {
-    Router::new()
+    let auth_routes = Router::new()
         .route("/signup", post(signup_handler))
-        .route("/signin", post(signin_handler))
-        .with_state(state)
+        .route("/signin", post(signin_handler));
+
+    Router::new().nest("/auth", auth_routes).with_state(state)
 }

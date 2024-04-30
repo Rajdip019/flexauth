@@ -7,9 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{collections::HashMap, env, fs};
 
-use crate::{core::user::User, errors::Error};
-
-use super::encryption_utils::decrypt_data;
+use crate::{errors::Error, core::user::User};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct IDTokenClaims {
@@ -59,9 +57,8 @@ fn load_public_key() -> Result<Vec<u8>, Error> {
     };
 }
 
-pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Error> {
+pub fn sign_jwt(user: &User) -> Result<String, Error> {
     let private_key = load_private_key()?;
-    let role = decrypt_data(&user.role, &dek);
     let server_url = env::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
 
     let header = Header::new(jwt::Algorithm::RS256);
@@ -76,14 +73,14 @@ pub fn sign_jwt(user: &User, dek: &str) -> Result<String, Error> {
     };
 
     let claims: IDTokenClaims = IDTokenClaims {
-        uid: user.uid.clone(),
+        uid: user.uid.to_string(),
         iss: server_url,
         iat: chrono::Utc::now().timestamp() as usize,
         exp: chrono::Utc::now().timestamp() as usize + 3600,
         data: Some(
             [
                 ("display_name".to_string(), user.name.to_string()),
-                ("role".to_string(), role),
+                ("role".to_string(), user.role.to_string()),
                 ("is_active".to_string(), user.is_active.to_string()),
                 (
                     "is_email_verified".to_string(),
