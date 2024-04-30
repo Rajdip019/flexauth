@@ -1,12 +1,11 @@
 use crate::{
-    core::user::User,
+    core::{dek::Dek, user::User},
     errors::{Error, Result},
     models::user_model::{
         ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload,
         UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
         UserEmailResponse, UserIdPayload, UserResponse,
     },
-    utils::user_utils::get_user_dek,
     AppState,
 };
 use axum::{extract::State, Json};
@@ -19,7 +18,7 @@ pub async fn get_all_users_handler(
 ) -> Result<Json<Vec<UserResponse>>> {
     println!(">> HANDLER: get_user_handler called");
 
-    match User::get_all_users(&state.mongo_client).await {
+    match User::get_all(&state.mongo_client).await {
         Ok(users) => Ok(Json(users)),
         Err(e) => Err(e),
     }
@@ -40,7 +39,7 @@ pub async fn update_user_handler(
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let dek_data = match get_user_dek(&state.mongo_client, &payload.email).await {
+    let dek_data = match Dek::get(&state.mongo_client, &payload.email).await {
         Ok(dek) => dek,
         Err(e) => return Err(e),
     };
@@ -94,7 +93,7 @@ pub async fn update_user_role_handler(
         });
     }
 
-    match User::update_user_role(&State(state).mongo_client, &payload.email, &payload.role).await {
+    match User::update_role(&State(state).mongo_client, &payload.email, &payload.role).await {
         Ok(role) => {
             return Ok(Json(UpdateUserRoleResponse {
                 message: "User role updated".to_string(),
@@ -127,7 +126,7 @@ pub async fn toggle_user_activation_status(
         }
     }
 
-    match User::toggle_user_activation(
+    match User::toggle_account_activation(
         &State(state).mongo_client,
         &payload.email,
         &payload.is_active.unwrap(),
@@ -152,7 +151,7 @@ pub async fn get_user_email_handler(
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_email_handler called");
 
-    match User::get_user_from_email(&state.mongo_client, &payload.email).await {
+    match User::get_from_email(&state.mongo_client, &payload.email).await {
         Ok(user) => return Ok(Json(user)),
         Err(e) => return Err(e),
     }
@@ -165,7 +164,7 @@ pub async fn get_user_id_handler(
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_id handler called");
 
-    match User::get_user_from_uid(&state.mongo_client, &payload.uid).await {
+    match User::get_from_uid(&state.mongo_client, &payload.uid).await {
         Ok(user) => return Ok(Json(user)),
         Err(e) => return Err(e),
     }
