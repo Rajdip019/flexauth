@@ -3,15 +3,15 @@ use aes_gcm::{
     AeadCore, Aes256Gcm, Key, KeyInit,
 };
 
-use axum::{extract::State, Json};
+use axum::Json;
 use bson::{doc, oid::ObjectId, DateTime};
 use chrono::Utc;
+use mongodb::Client;
 use serde_json::{json, Value};
 
 use crate::{
     errors::Result,
     models::user_model::{User, UserResponse},
-    AppState,
 };
 
 use super::hashing_utils::salt_and_hash_password;
@@ -111,12 +111,12 @@ pub fn decrypted_user(user: &User, dek: &str) -> UserResponse {
 }
 
 pub async fn add_dek_to_db(
-    encrypted_email: String,
-    encrypted_uid: String,
-    encrypted_dek: String,
-    State(state): State<AppState>,
+    encrypted_email: &str,
+    encrypted_uid: &str,
+    encrypted_dek: &str,
+    mongo_client: &Client,
 ) -> Result<Json<Value>> {
-    let db = state.mongo_client.database("test");
+    let db = mongo_client.database("test");
 
     db.collection("deks")
         .insert_one(

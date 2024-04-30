@@ -22,6 +22,11 @@ pub enum Error {
 
     // -- Session Errors
     InvalidToken { message: String },
+
+    ServerError { message: String },
+
+    // -- Encryption Errors
+    KeyNotFound { message: String },
     PublicKeyLoadError { message: String },
     PrivateKeyLoadError { message: String },
     SignatureVerificationError { message: String },
@@ -66,22 +71,31 @@ impl Error {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_PASSWORD)
             }
 
-            Self::ResetPasswordLinkExpired { message: _ } => {
-                (StatusCode::UNAUTHORIZED, ClientError::RESET_PASSWORD_LINK_EXPIRED)
-            }
+            Self::KeyNotFound { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+
+            Self::ResetPasswordLinkExpired { message: _ } => (
+                StatusCode::UNAUTHORIZED,
+                ClientError::RESET_PASSWORD_LINK_EXPIRED,
+            ),
 
             // -- Session Errors
-            Self::PublicKeyLoadError { message: _ } => {
-                (StatusCode::INTERNAL_SERVER_ERROR, ClientError::SERVICE_ERROR)
-            }
+            Self::PublicKeyLoadError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
 
-            Self::PrivateKeyLoadError { message: _ } => {
-                (StatusCode::INTERNAL_SERVER_ERROR, ClientError::SERVICE_ERROR)
-            }
+            Self::PrivateKeyLoadError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
 
-            Self::SignatureVerificationError { message: _ } => {
-                (StatusCode::UNAUTHORIZED, ClientError::SIGNATURE_VERIFICATION_ERROR)
-            }
+            Self::SignatureVerificationError { message: _ } => (
+                StatusCode::UNAUTHORIZED,
+                ClientError::SIGNATURE_VERIFICATION_ERROR,
+            ),
 
             Self::ExpiredSignature { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::EXPIRED_SIGNATURE)
@@ -91,9 +105,14 @@ impl Error {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_TOKEN)
             }
 
-        Self::IdTokenCreationError { message: _ } => {
-            (StatusCode::INTERNAL_SERVER_ERROR, ClientError::SERVICE_ERROR)
-        }
+            Self::ServerError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+            Self::IdTokenCreationError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
 
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
