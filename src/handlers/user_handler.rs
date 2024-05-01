@@ -1,42 +1,33 @@
 use crate::{
+    core::{dek::Dek, user::User},
     errors::{Error, Result},
-    models::{
-        dek_model::Dek,
-        user_model::{
-            ToggleUserActivationStatusPayload, UpdateUserPayload, UpdateUserRolePayload, User,
-            UserEmail,
-        },
+    models::user_model::{
+        ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload,
+        UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
+        UserEmailResponse, UserIdPayload, UserResponse,
     },
-    utils::encryption_utils::{decrypt_data, encrypt_data},
     AppState,
 };
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use bson::{doc, DateTime};
 use mongodb::Collection;
-use serde::de::DeserializeOwned;
-use serde_json::{json, Value};
-use std::env;
 
-trait MongoDbModel: DeserializeOwned + Sync + Send + Unpin {
-    fn collection_name() -> &'static str;
-    fn db_name() -> &'static str;
-}
-
-pub async fn get_all_users_handler(State(state): State<AppState>) -> Result<Json<Value>> {
+pub async fn get_all_users_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<UserResponse>>> {
     println!(">> HANDLER: get_user_handler called");
 
-    let res = User::get_all_users(&state.mongo_client).await.unwrap();
-
-    Ok(Json(json!({
-        "users": res,
-    })))
+    match User::get_all(&state.mongo_client).await {
+        Ok(users) => Ok(Json(users)),
+        Err(e) => Err(e),
+    }
 }
 
 pub async fn update_user_handler(
     State(state): State<AppState>,
     payload: Json<UpdateUserPayload>,
-) -> Result<Json<Value>> {
+) -> Result<Json<UpdateUserResponse>> {
     println!(">> HANDLER: update_user_handler called");
 
     // check if the payload is empty
@@ -48,39 +39,16 @@ pub async fn update_user_handler(
 
     let db = state.mongo_client.database("test");
     let collection: Collection<User> = db.collection("users");
-    let collection_dek: Collection<Dek> = db.collection("deks");
-
-    let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-
-    // encrypt the email using kek
-    let encrypted_email_kek = encrypt_data(&payload.email, &server_kek);
-
-    let cursor_dek = collection_dek
-        .find_one(
-            Some(doc! {
-                "email": encrypted_email_kek.clone(),
-            }),
-            None,
-        )
-        .await
-        .unwrap();
-
-    if cursor_dek.is_none() {
-        return Err(Error::UserNotFound {
-            message: "DEK not found".to_string(),
-        });
-    }
-
-    let dek_data = cursor_dek.unwrap();
-
-    // decrypt the dek using the server kek
-    let uid = decrypt_data(&dek_data.uid, &server_kek);
+    let dek_data = match Dek::get(&state.mongo_client, &payload.email).await {
+        Ok(dek) => dek,
+        Err(e) => return Err(e),
+    };
 
     // find the user in the users collection using the uid
-    let cursor = collection
+    match collection
         .update_one(
             doc! {
-                "uid": uid,
+                "uid": dek_data.uid,
             },
             doc! {
                 "$set": {
@@ -91,30 +59,31 @@ pub async fn update_user_handler(
             None,
         )
         .await
-        .unwrap();
-
-    let modified_count = cursor.modified_count;
-
-    // Return Error if User is not there
-    if modified_count == 0 {
-        // send back a 404 to
-        return Err(Error::UserNotFound {
-            message: "User not found".to_string(),
-        });
+    {
+        Ok(res) => {
+            if res.modified_count == 0 {
+                return Err(Error::UserNotFound {
+                    message: "User not found".to_string(),
+                });
+            }
+            Ok(Json(UpdateUserResponse {
+                message: "User updated".to_string(),
+                email: payload.email.to_owned(),
+                name: payload.name.to_owned(),
+            }))
+        }
+        Err(e) => {
+            return Err(Error::ServerError {
+                message: e.to_string(),
+            })
+        }
     }
-
-    let res = Json(json!({
-        "message": "User updated",
-        "user": *payload,
-    }));
-
-    Ok(res)
 }
 
 pub async fn update_user_role_handler(
     State(state): State<AppState>,
     payload: Json<UpdateUserRolePayload>,
-) -> Result<Json<Value>> {
+) -> Result<Json<UpdateUserRoleResponse>> {
     println!(">> HANDLER: update_user_role_handler called");
 
     // check if the payload is empty
@@ -124,17 +93,22 @@ pub async fn update_user_role_handler(
         });
     }
 
-    let res = User::update_user_role(&State(state).mongo_client, &payload.email, &payload.role)
-        .await
-        .unwrap();
-
-    Ok(res)
+    match User::update_role(&State(state).mongo_client, &payload.email, &payload.role).await {
+        Ok(role) => {
+            return Ok(Json(UpdateUserRoleResponse {
+                message: "User role updated".to_string(),
+                email: payload.email.to_owned(),
+                role,
+            }))
+        }
+        Err(e) => return Err(e),
+    }
 }
 
 pub async fn toggle_user_activation_status(
     State(state): State<AppState>,
     payload: Json<ToggleUserActivationStatusPayload>,
-) -> Result<Json<Value>> {
+) -> Result<Json<ToggleUserActivationStatusResponse>> {
     println!(">> HANDLER: update_user_role_handler called");
 
     match payload.is_active {
@@ -152,38 +126,54 @@ pub async fn toggle_user_activation_status(
         }
     }
 
-    let res = User::toggle_user_activation(
+    match User::toggle_account_activation(
         &State(state).mongo_client,
         &payload.email,
         &payload.is_active.unwrap(),
     )
     .await
-    .unwrap();
-
-    Ok(res)
+    {
+        Ok(is_active_final) => {
+            return Ok(Json(ToggleUserActivationStatusResponse {
+                message: "User activation status updated".to_string(),
+                email: payload.email.to_owned(),
+                is_active: is_active_final,
+            }))
+        }
+        Err(e) => return Err(e),
+    }
 }
 
 #[debug_handler]
-pub async fn get_user_handler(
+pub async fn get_user_email_handler(
     State(state): State<AppState>,
-    payload: Json<UserEmail>,
-) -> Result<Json<Value>> {
-    println!(">> HANDLER: get_user_handler called");
+    payload: Json<UserEmailPayload>,
+) -> Result<Json<UserResponse>> {
+    println!(">> HANDLER: get_user_by_email_handler called");
 
-    let user = User::get_user_from_email(&state.mongo_client, &payload.email)
-        .await
-        .unwrap();
+    match User::get_from_email(&state.mongo_client, &payload.email).await {
+        Ok(user) => return Ok(Json(user)),
+        Err(e) => return Err(e),
+    }
+}
 
-    Ok(Json(json!({
-        "message": "User found",
-        "user": user,
-    })))
+#[debug_handler]
+pub async fn get_user_id_handler(
+    State(state): State<AppState>,
+    payload: Json<UserIdPayload>,
+) -> Result<Json<UserResponse>> {
+    println!(">> HANDLER: get_user_by_id handler called");
+
+    match User::get_from_uid(&state.mongo_client, &payload.uid).await {
+        Ok(user) => return Ok(Json(user)),
+        Err(e) => return Err(e),
+    }
 }
 
 pub async fn delete_user_handler(
     State(state): State<AppState>,
-    payload: Json<UserEmail>,
-) -> Result<Json<Value>> {
+    payload: Json<UserEmailPayload>,
+) -> Result<Json<UserEmailResponse>> {
     println!(">> HANDLER: delete_user_handler called");
 
     // check if the payload is empty
@@ -193,9 +183,13 @@ pub async fn delete_user_handler(
         });
     }
 
-    let res = User::delete_user(&State(state).mongo_client, &payload.email)
-        .await
-        .unwrap();
-
-    Ok(res)
+    match User::delete(&State(state).mongo_client, &payload.email).await {
+        Ok(_) => {
+            return Ok(Json(UserEmailResponse {
+                message: "User deleted".to_string(),
+                email: payload.email.to_owned(),
+            }))
+        }
+        Err(e) => return Err(e),
+    }
 }

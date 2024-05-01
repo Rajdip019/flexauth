@@ -1,13 +1,6 @@
 use mongodb::{Client, Collection};
-use std::env;
 
-use crate::{
-    models::{dek_model::Dek, user_model::User},
-    utils::{
-        encryption_utils::{create_dek, encrypt_data},
-        hashing_utils::salt_and_hash_password,
-    },
-};
+use crate::core::{user::User, dek::Dek};
 
 struct InitUser {
     name: String,
@@ -51,45 +44,25 @@ pub async fn init_users(mongo_client: Client) {
 
     // map the users
     for user in users {
-        let dek = create_dek();
-        // hash and salt the password
-        let hashed_and_salted_pass = salt_and_hash_password(&user.password);
-
-        // encrypt sensitive data
-        let encrypted_password = encrypt_data(&hashed_and_salted_pass.password, &dek);
-        let encrypted_salt = encrypt_data(&hashed_and_salted_pass.salt, &dek);
-        let formatted_pass_with_salt = format!("{}.{}", encrypted_password, encrypted_salt);
-        let encrypted_email = encrypt_data(&user.email, &dek);
-        let encrypted_role = encrypt_data(&user.role, &dek);
-
         // create a new user
-        let new_user = User::new_user(
-            &user.name,
-            &encrypted_email,
-            &encrypted_role,
-            &formatted_pass_with_salt,
-        );
+        let new_user = User::new(&user.name, &user.email, &user.role, &user.password);
+        let dek = Dek::generate();
+        match new_user.encrypt_and_add(&mongo_client, &dek).await {
+            Ok(_) => {},
+            Err(e) => {
+                println!(">> Error adding user: {:?}", e);
+                continue;
+            }
+        };
 
-        // add user to the database
-        let db = mongo_client.database("test");
-        db.collection("users")
-            .insert_one(new_user.clone(), None)
-            .await
-            .unwrap();
-
-        // encrypt the data with kek
-        let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-        let encrypted_dek = encrypt_data(&dek, &server_kek);
-        let encrypted_email_kek = encrypt_data(&user.email, &server_kek);
-        let encrypted_uid = encrypt_data(&new_user.uid.to_string(), &server_kek);
-
-        let dek_data = Dek::new_dek(&encrypted_uid, &encrypted_email_kek, &encrypted_dek);
-
-        // add the dek to the database
-        db.collection("deks")
-            .insert_one(dek_data, None)
-            .await
-            .unwrap();
+        // add the dek to the deks collection
+        match Dek::new(&new_user.uid, &new_user.email, &dek).encrypt_and_add(&mongo_client).await {
+            Ok(_) => {}
+            Err(e) => {
+                println!(">> Error adding dek: {:?}", e);
+                continue;
+            }
+        }
 
         println!(">> {:?} added. uid: {:?}", new_user.name, new_user.uid);
     }
