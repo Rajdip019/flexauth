@@ -4,7 +4,7 @@ use mongodb::{Client, Collection};
 use serde_json::{json, Value};
 
 use crate::{
-    core::{dek::Dek, user::User},
+    core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::auth_model::{SignInPayload, SignUpPayload},
     utils::{ 
@@ -67,15 +67,9 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
         Err(e) => return Err(e),
     };
 
-    // issue a jwt token
-    let token = match IDToken::new(&user).sign() {
-        Ok(token) => token,
-        Err(err) => {
-            eprintln!("Error signing jwt token: {}", err);
-            return Err(Error::IdTokenCreationError {
-                message: err.to_string(),
-            });
-        }
+    let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek).await {
+        Ok(session) => session,
+        Err(e) => return Err(e),
     };
 
     Ok(Json(json!({
@@ -87,7 +81,10 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
             "updated_at": user.updated_at,
             "email_verified": user.email_verified,
             "is_active": user.is_active,
-            "token": token,
+            "session": {
+                "id_token" : session.id_token,
+                "refresh_token" : session.refresh_token,
+            },
     })))
 }
 
@@ -104,19 +101,16 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
         Err(e) => return Err(e),
     };
 
+    let dek_data = match Dek::get(&mongo_client, &user.uid).await {
+        Ok(dek_data) => dek_data,
+        Err(e) => return Err(e),
+    };
+
     // verify the password
     if verify_password_hash(&payload.password, &user.password) {
-        // issue a jwt token
-        let token = match IDToken::new(&user)
-        .sign()
-        {
-            Ok(token) => token,
-            Err(err) => {
-                eprintln!("Error signing jwt token: {}", err);
-                return Err(Error::IdTokenCreationError {
-                    message: err.to_string(),
-                });
-            }
+        let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek_data.dek).await {
+            Ok(session) => session,
+            Err(e) => return Err(e),
         };
         let res = Json(json!({
             "message": "Signin successful",
@@ -129,7 +123,10 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
                 "updated_at": user.updated_at,
                 "email_verified": user.email_verified,
                 "is_active": user.is_active,
-                "token": token,
+                "session": {
+                    "id_token" : session.id_token,
+                    "refresh_token" : session.refresh_token,
+                },
             },
         }));
 

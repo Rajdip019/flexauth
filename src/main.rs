@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(routes::auth_routes::routes(State(app_state.clone())))
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
-        .merge(routes::session_routes::routes())
+        .merge(routes::session_routes::routes(State(app_state.clone())))
         .layer(middleware::map_response(main_response_mapper));
 
     let app = Router::new().nest("/api", routes);

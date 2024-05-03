@@ -1,21 +1,44 @@
-use axum::Json;
+use axum::{extract::State, Json};
 use axum_macros::debug_handler;
-use serde_json::{json, Value};
 
-use crate::{errors::{Error, Result}, models::session_model::VerifyJwt, utils::session_utils::IDToken};
+use crate::{core::session::Session, errors::{Error, Result}, models::{session_model::VerifyJwt, user_model::UserIdPayload}, utils::session_utils::IDToken, AppState};
 
 #[debug_handler]
-pub async fn verify_jwt_handler(
+pub async fn verify_session(
+    State(state): State<AppState>,
     payload: Json<VerifyJwt>,
-) -> Result<Json<Value>> {
+) -> Result<Json<IDToken>> {
     // check if the token is not empty
     if payload.token.is_empty() {
         return Err(Error::InvalidPayload { message: "Invalid payload passed".to_string() });
     }
 
     // verify the token
-    let _ = match IDToken::verify(&payload.token) {
-        Ok(val) => return Ok(Json(json!(val))),
+    match Session::verify(&state.mongo_client, &payload.token).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
         Err(e) => return Err(e),
+        
+    };
+}
+
+#[debug_handler]
+pub async fn get_all_from_uid(
+    State(state): State<AppState>,
+    payload: Json<UserIdPayload>,
+) -> Result<Json<Vec<Session>>> {
+    // check if the token is not empty
+    if payload.uid.is_empty() {
+        return Err(Error::InvalidPayload { message: "Invalid payload passed".to_string() });
+    }
+
+    // verify the token
+    match Session::get_all_from_uid(&state.mongo_client, &payload.uid).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
+        Err(e) => return Err(e),
+        
     };
 }
