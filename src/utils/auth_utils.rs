@@ -9,7 +9,8 @@ use crate::{
     models::auth_model::{SignInPayload, SignUpPayload},
     traits::decryption::Decrypt,
     utils::{
-        encryption_utils::encrypt_data, hashing_utils::verify_password_hash,
+        encryption_utils::Encryption,
+        hashing_utils::verify_password_hash,
         session_utils::sign_jwt,
     },
 };
@@ -63,7 +64,7 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
     let mut user = match collection
         .find_one(
             Some(doc! {
-                "email": encrypt_data(&payload.email, &dek)
+                "email": Encryption::encrypt_data(&payload.email, &dek)
             }),
             None,
         )
@@ -135,7 +136,7 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
         Err(e) => return Err(e),
     };
 
-    let encrypted_uid = encrypt_data(&dek_data.uid, &dek_data.dek);
+    let encrypted_uid = Encryption::encrypt_data(&dek_data.uid, &dek_data.dek);
     // find the user in the users collection using the uid
     let collection: Collection<User> = db.collection("users");
     let mut user = match collection
