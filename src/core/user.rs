@@ -51,18 +51,7 @@ impl User {
         user.password = salt_and_hash_password(user.password.as_str());
         let collection: Collection<User> = db.collection("users");
         match collection.insert_one(user.encrypt(&dek), None).await {
-            Ok(_) => return Ok(Self {
-                _id: self._id,
-                uid: self.uid.clone(),
-                name: self.name.clone(),
-                email: self.email.clone(),
-                role: self.role.clone(),
-                password: self.password.clone(),
-                created_at: self.created_at,
-                updated_at: self.updated_at,
-                email_verified: self.email_verified,
-                is_active: self.is_active,
-            }),
+            Ok(_) => return Ok(user),
             Err(_) => {
                 return Err(Error::ServerError {
                     message: "Failed to Insert User".to_string(),
