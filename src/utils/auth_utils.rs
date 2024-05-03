@@ -7,9 +7,7 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::auth_model::{SignInPayload, SignUpPayload},
-    utils::{ 
-        hashing_utils::verify_password_hash, session_utils::IDToken,
-    },
+    utils::hashing_utils::verify_password_hash,
 };
 
 pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Result<Json<Value>> {
