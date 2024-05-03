@@ -55,6 +55,22 @@ impl Dek {
         let key_iv = format!("{}.{}", hex_key, hex_iv);
         return key_iv;
     }
+    
+    pub async fn encrypt_and_add(&self, mongo_client: &Client) -> Result<Self> {
+        let db = mongo_client.database("test");
+        let collection_dek: Collection<Dek> = db.collection("deks");
+
+        let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+        let encrypted_dek = self.encrypt(&server_kek);
+
+        match collection_dek.insert_one(&encrypted_dek, None).await {
+            Ok(_) => return Ok(self.clone()),
+            Err(e) => return Err(Error::ServerError {
+                message: e.to_string(),
+            }),
+        }
+    }
 
     pub async fn get(mongo_client: &Client, identifier: &str) -> Result<Self> {
         let db = mongo_client.database("test");
@@ -111,22 +127,6 @@ impl Dek {
                     }
                 };
             }
-        }
-    }
-
-    pub async fn encrypt_and_add(&self, mongo_client: &Client) -> Result<Self> {
-        let db = mongo_client.database("test");
-        let collection_dek: Collection<Dek> = db.collection("deks");
-
-        let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-
-        let encrypted_dek = self.clone().encrypt(&server_kek);
-
-        match collection_dek.insert_one(&encrypted_dek, None).await {
-            Ok(_) => return Ok(self.clone()),
-            Err(e) => return Err(Error::ServerError {
-                message: e.to_string(),
-            }),
         }
     }
 }
