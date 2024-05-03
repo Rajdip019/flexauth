@@ -31,11 +31,10 @@ impl Session {
         let db = mongo_client.database("test");
         let collection_session: Collection<Session> = db.collection("sessions");
 
-        let session = self.clone();
-        let encrypted_session = session.encrypt(key);
+        let encrypted_session = self.encrypt(key);
 
         match collection_session.insert_one(encrypted_session, None).await {
-            Ok(_) => Ok(session),
+            Ok(_) => Ok(self.clone()),
             Err(e) => Err(Error::ServerError {
                 message: e.to_string(),
             }),
