@@ -81,7 +81,7 @@ impl Dek {
                     .unwrap();
 
                 match cursor_dek {
-                    Some(mut data) => return Ok(data.decrypt(&server_kek)),
+                    Some(data) => return Ok(data.decrypt(&server_kek)),
                     None => {
                         return Err(Error::KeyNotFound {
                             message: "DEK not found".to_string(),
@@ -103,7 +103,7 @@ impl Dek {
                     .unwrap();
 
                 match cursor_dek {
-                    Some(mut data) => return Ok(data.decrypt(&server_kek)),
+                    Some(data) => return Ok(data.decrypt(&server_kek)),
                     None => {
                         return Err(Error::KeyNotFound {
                             message: "DEK not found".to_string(),
