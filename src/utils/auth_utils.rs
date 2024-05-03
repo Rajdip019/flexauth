@@ -7,11 +7,8 @@ use crate::{
     core::{dek::Dek, user::User},
     errors::{Error, Result},
     models::auth_model::{SignInPayload, SignUpPayload},
-    traits::decryption::Decrypt,
-    utils::{
-        encryption_utils::Encryption,
-        hashing_utils::verify_password_hash,
-        session_utils::sign_jwt,
+    utils::{ 
+        hashing_utils::verify_password_hash, session_utils::IDToken,
     },
 };
 
@@ -48,7 +45,7 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
     }
 
     let dek = Dek::generate(); // create a data encryption key for new user
-    match User::new(
+    let user = match User::new(
         &payload.name,
         &payload.email,
         &payload.role,
@@ -61,34 +58,8 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
         Err(e) => return Err(e),
     };
 
-    let mut user = match collection
-        .find_one(
-            Some(doc! {
-                "email": Encryption::encrypt_data(&payload.email, &dek)
-            }),
-            None,
-        )
-        .await
-    {
-        Ok(user) => match user {
-            Some(user) => user,
-            None => {
-                return Err(Error::UserNotFound {
-                    message: "User not found".to_string(),
-                });
-            }
-        },
-        Err(e) => {
-            return Err(Error::ServerError {
-                message: e.to_string(),
-            })
-        }
-    };
-
-    let decrypted_user = user.decrypt(&dek);
-
     // add the dek to the deks collection
-    match Dek::new(&decrypted_user.uid, &decrypted_user.email, &dek)
+    match Dek::new(&user.uid, &user.email, &dek)
         .encrypt_and_add(&mongo_client)
         .await
     {
@@ -96,10 +67,8 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
         Err(e) => return Err(e),
     };
 
-    println!(">> User added successfully: {:?}", decrypted_user);
-
     // issue a jwt token
-    let token = match sign_jwt(&decrypted_user) {
+    let token = match IDToken::new(&user).sign() {
         Ok(token) => token,
         Err(err) => {
             eprintln!("Error signing jwt token: {}", err);
@@ -110,14 +79,14 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
     };
 
     Ok(Json(json!({
-            "uid": decrypted_user.uid,
-            "name": decrypted_user.name,
-            "email": decrypted_user.email,
-            "role": decrypted_user.role,
-            "created_at": decrypted_user.created_at,
-            "updated_at": decrypted_user.updated_at,
-            "email_verified": decrypted_user.email_verified,
-            "is_active": decrypted_user.is_active,
+            "uid": user.uid,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "created_at": user.created_at,
+            "updated_at": user.updated_at,
+            "email_verified": user.email_verified,
+            "is_active": user.is_active,
             "token": token,
     })))
 }
@@ -129,46 +98,18 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
             message: "Invalid payload".to_string(),
         });
     }
-    let db = mongo_client.database("test");
 
-    let dek_data = match Dek::get(&mongo_client, &payload.email).await {
-        Ok(dek) => dek,
+    let user = match User::get_from_email(&mongo_client, &payload.email).await {
+        Ok(user) => user,
         Err(e) => return Err(e),
     };
 
-    let encrypted_uid = Encryption::encrypt_data(&dek_data.uid, &dek_data.dek);
-    // find the user in the users collection using the uid
-    let collection: Collection<User> = db.collection("users");
-    let mut user = match collection
-        .find_one(
-            Some(doc! {
-                "uid": encrypted_uid
-            }),
-            None,
-        )
-        .await
-    {
-        Ok(user) => match user {
-            Some(user) => user,
-            None => {
-                return Err(Error::UserNotFound {
-                    message: "User not found".to_string(),
-                });
-            }
-        },
-        Err(e) => {
-            return Err(Error::ServerError {
-                message: e.to_string(),
-            })
-        }
-    };
-
-    let decrypted_user = user.decrypt(&dek_data.dek);
-
     // verify the password
-    if verify_password_hash(&payload.password, &decrypted_user.password) {
+    if verify_password_hash(&payload.password, &user.password) {
         // issue a jwt token
-        let token = match sign_jwt(&decrypted_user) {
+        let token = match IDToken::new(&user)
+        .sign()
+        {
             Ok(token) => token,
             Err(err) => {
                 eprintln!("Error signing jwt token: {}", err);
@@ -180,14 +121,14 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
         let res = Json(json!({
             "message": "Signin successful",
             "user": {
-                "uid": decrypted_user.uid,
-                "name": decrypted_user.name,
-                "email": decrypted_user.email,
-                "role": decrypted_user.role,
-                "created_at": decrypted_user.created_at,
-                "updated_at": decrypted_user.updated_at,
-                "email_verified": decrypted_user.email_verified,
-                "is_active": decrypted_user.is_active,
+                "uid": user.uid,
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "created_at": user.created_at,
+                "updated_at": user.updated_at,
+                "email_verified": user.email_verified,
+                "is_active": user.is_active,
                 "token": token,
             },
         }));

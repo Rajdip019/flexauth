@@ -45,17 +45,19 @@ impl User {
         }
     }
 
-    pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<UserResponse> {
+    pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<Self> {
         let db = mongo_client.database("test");
         let mut user = self.clone();
         user.password = salt_and_hash_password(user.password.as_str());
         let collection: Collection<User> = db.collection("users");
         match collection.insert_one(user.encrypt(&dek), None).await {
-            Ok(_) => return Ok(UserResponse {
+            Ok(_) => return Ok(Self {
+                _id: self._id,
                 uid: self.uid.clone(),
                 name: self.name.clone(),
                 email: self.email.clone(),
                 role: self.role.clone(),
+                password: self.password.clone(),
                 created_at: self.created_at,
                 updated_at: self.updated_at,
                 email_verified: self.email_verified,
@@ -69,7 +71,7 @@ impl User {
         }
     }
 
-    pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<UserResponse> {
+    pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<User> {
         // check if the payload is empty
         match email.is_empty() {
             true => Err(Error::InvalidPayload {
@@ -98,16 +100,7 @@ impl User {
                 {
                     Ok(Some(mut user)) => {
                         let decrypted_user = user.decrypt(&dek_data.dek);
-                        return Ok(UserResponse {
-                            name: decrypted_user.name,
-                            email: decrypted_user.email,
-                            role: decrypted_user.role,
-                            created_at: decrypted_user.created_at,
-                            updated_at: decrypted_user.updated_at,
-                            email_verified: decrypted_user.email_verified,
-                            is_active: decrypted_user.is_active,
-                            uid: decrypted_user.uid,
-                        });
+                        return Ok(decrypted_user);
                     }
                     Ok(None) => Err(Error::UserNotFound {
                         message: "User not found".to_string(),
@@ -120,7 +113,7 @@ impl User {
         }
     }
 
-    pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<UserResponse> {
+    pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<User> {
         let db = mongo_client.database("test");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, uid).await {
@@ -141,16 +134,7 @@ impl User {
         {
             Ok(Some(mut user)) => {
                 let decrypted_user = user.decrypt(&dek_data.dek);
-                return Ok(UserResponse {
-                    name: decrypted_user.name,
-                    email: decrypted_user.email,
-                    role: decrypted_user.role,
-                    created_at: decrypted_user.created_at,
-                    updated_at: decrypted_user.updated_at,
-                    email_verified: decrypted_user.email_verified,
-                    is_active: decrypted_user.is_active,
-                    uid: decrypted_user.uid,
-                });
+                return Ok(decrypted_user);
             }
             Ok(None) => Err(Error::UserNotFound {
                 message: "User not found".to_string(),
