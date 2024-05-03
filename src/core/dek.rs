@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::{Error, Result},
-    traits::{decryption::Decrypt, encryption::Encrypt},
-    utils::encryption_utils::encrypt_data,
+    traits::{decryption::Decrypt, encryption::Encrypt}, utils::encryption_utils::Encryption,
 };
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
@@ -23,7 +22,7 @@ pub struct Dek {
 
 impl Dek {
     pub fn new(uid: &str, email: &str, dek: &str) -> Self {
-        Dek {
+        Self {
             _id: ObjectId::new(),
             uid: uid.to_string(),
             email: email.to_string(),
@@ -70,7 +69,7 @@ impl Dek {
         match is_email {
             true => {
                 // encrypt the email using kek
-                let encrypted_email_kek = encrypt_data(&identifier, &server_kek);
+                let encrypted_email_kek = Encryption::encrypt_data(&identifier, &server_kek);
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
@@ -92,7 +91,7 @@ impl Dek {
             }
             false => {
                 // encrypt the uid using kek
-                let encrypted_uid_kek = encrypt_data(&identifier, &server_kek);
+                let encrypted_uid_kek = Encryption::encrypt_data(&identifier, &server_kek);
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
