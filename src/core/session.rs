@@ -1,7 +1,5 @@
 use crate::{
-    errors::{Error, Result},
-    traits::{decryption::Decrypt, encryption::Encrypt},
-    utils::{encryption_utils::Encryption, session_utils::{IDToken, RefreshToken}},
+    errors::{Error, Result}, models::session_model::SessionResponse, traits::{decryption::Decrypt, encryption::Encrypt}, utils::{encryption_utils::Encryption, session_utils::{IDToken, RefreshToken}}
 };
 use bson::{doc, DateTime};
 use futures::StreamExt;
@@ -17,7 +15,7 @@ pub struct Session {
     pub id_token: String,
     pub refresh_token: String,
     pub user_agent: String,
-    pub is_active: bool,
+    pub is_revoked: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
 }
@@ -40,7 +38,7 @@ impl Session {
             id_token,
             refresh_token,
             user_agent: user_agent.to_string(),
-            is_active: true,
+            is_revoked: false,
             created_at: DateTime::now(),
             updated_at: DateTime::now(),
         }
@@ -81,12 +79,12 @@ impl Session {
                     .count_documents(doc! {
                         "uid": encrypted_id,
                         "id_token": encrypted_id_token,
-                        "is_active": true,
+                        "is_revoked": false,
                     }, None)
                     .await
                 {
                     Ok(count) => {
-                        if count > 0 {
+                        if count == 1 {
                             Ok(())
                         } else {
                             Err(Error::SessionExpired {
@@ -111,7 +109,7 @@ impl Session {
         token_data
     }
 
-    pub async fn get_all_from_uid(mongo_client: &Client, uid: &str) -> Result<Vec<Session>> {
+    pub async fn get_all_from_uid(mongo_client: &Client, uid: &str) -> Result<Vec<SessionResponse>> {
         let db = mongo_client.database("test");
         let collection_session: Collection<Session> = db.collection("sessions");
 
@@ -126,24 +124,39 @@ impl Session {
             .find(
                 doc! {
                     "uid": encrypted_uid,
-                    "is_active": true,
+                    "is_revoked": false,
                 },
                 None,
             )
             .await
             .unwrap();
 
-        let mut sessions: Vec<Session> = Vec::new();
+        let mut sessions_res: Vec<SessionResponse> = Vec::new();
         while let Some(session) = cursor.next().await {
             match session {
                 Ok(data) => {
                     let decrypted_session = data.decrypt(&dek_data.dek);
-                    sessions.push(decrypted_session);
+                    match IDToken::verify(&decrypted_session.id_token) {
+                        Ok(token) => {
+                            println!("{:?}", token);
+                            sessions_res.push(
+                                SessionResponse {
+                                    uid: decrypted_session.uid,
+                                    email: decrypted_session.email,
+                                    user_agent: decrypted_session.user_agent,
+                                    is_revoked: decrypted_session.is_revoked,
+                                    created_at: decrypted_session.created_at,
+                                    updated_at: decrypted_session.updated_at,
+                                }
+                            );
+                        }
+                        Err(_) => continue,
+                    }
                 }
                 Err(e) => return Err(Error::ServerError { message: e.to_string() }),
             }
         }
-        Ok(sessions)
+        Ok(sessions_res)
     }
 
     pub async fn revoke_all(mongo_client: &Client, uid: &str) -> Result<()> {
@@ -153,7 +166,7 @@ impl Session {
         match collection_session
             .update_many(
                 doc! {"uid": uid},
-                doc! {"$set": {"is_active": false}},
+                doc! {"$set": {"is_revoked": true}},
                 None,
             )
             .await
@@ -176,7 +189,7 @@ impl Session {
         match collection_session
             .update_one(
                 doc! {"id_token": id_token, "refresh_token": refresh_token },
-                doc! {"$set": {"is_active": false}},
+                doc! {"$set": {"is_revoked": true}},
                 None,
             )
             .await

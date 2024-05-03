@@ -54,7 +54,7 @@ impl IDToken {
             uid: user.uid.to_string(),
             iss: server_url,
             iat: chrono::Utc::now().timestamp() as usize,
-            exp: chrono::Utc::now().timestamp() as usize + (3600 * 12), // 12h
+            exp: chrono::Utc::now().timestamp() as usize + 3600, // 1h
             token_type: "id".to_string(),
             data : Some(
                 [
