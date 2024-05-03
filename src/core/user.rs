@@ -504,7 +504,7 @@ impl User {
         Ok("Password updated successfully".to_string())
     }
 
-    pub async fn delete(mongo_client: &Client, email: &str) -> Result<()> {
+    pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
         let db = mongo_client.database("test");
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
@@ -552,7 +552,7 @@ impl User {
                                 message: "DEK not found".to_string(),
                             });
                         }
-                        Ok(())
+                        Ok(dek_data.uid)
                     }
                     Err(_) => {
                         return Err(Error::ServerError {

@@ -1,5 +1,5 @@
 use crate::{
-    core::{dek::Dek, user::User},
+    core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::user_model::{
         ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload,
@@ -201,8 +201,12 @@ pub async fn delete_user_handler(
         });
     }
 
-    match User::delete(&State(state).mongo_client, &payload.email).await {
-        Ok(_) => {
+    match User::delete(&State(&state).mongo_client, &payload.email).await {
+        Ok(uid) => {
+            match Session::delete_all(&State(&state).mongo_client, &uid).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
             return Ok(Json(UserEmailResponse {
                 message: "User deleted".to_string(),
                 email: payload.email.to_owned(),
