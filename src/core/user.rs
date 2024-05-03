@@ -5,7 +5,7 @@ use crate::{
     models::{password_model::ForgetPasswordRequest, user_model::UserResponse},
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
-        email_utils::Email, encryption_utils::encrypt_data, hashing_utils::{salt_and_hash_password, verify_password_hash}
+        email_utils::Email, encryption_utils::Encryption, hashing_utils::{salt_and_hash_password, verify_password_hash}
     },
 };
 use bson::{doc, oid::ObjectId, uuid, DateTime};
@@ -31,7 +31,7 @@ pub struct User {
 
 impl User {
     pub fn new(name: &str, email: &str, role: &str, password: &str) -> Self {
-        User {
+        Self {
             _id: ObjectId::new(),
             uid: uuid::Uuid::new().to_string(),
             name: name.to_string(),
@@ -90,7 +90,7 @@ impl User {
                 match user_collection
                     .find_one(
                         doc! {
-                            "uid": encrypt_data(&dek_data.uid, &dek_data.dek),
+                            "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
                         },
                         None,
                     )
@@ -133,7 +133,7 @@ impl User {
         match collection
             .find_one(
                 doc! {
-                    "uid": encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
                 },
                 None,
             )
@@ -174,7 +174,6 @@ impl User {
 
         // iterate over the users and decrypt the data
         while let Some(dek) = cursor_dek.next().await {
-            println!("Kek {:?}", kek);
             let dek_data: Dek = match dek {
                 Ok(mut data) => data.decrypt(&kek),
                 Err(_) => {
@@ -184,7 +183,7 @@ impl User {
                 }
             };
 
-            let encrypted_email_dek = encrypt_data(&dek_data.email, &dek_data.dek);
+            let encrypted_email_dek = Encryption::encrypt_data(&dek_data.email, &dek_data.dek);
 
             // find the user in the users collection using the encrypted email to iterate over the users
             let cursor_user = collection
@@ -242,11 +241,11 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
                 },
                 doc! {
                     "$set": {
-                        "role": encrypt_data(&role, &dek_data.dek),
+                        "role": Encryption::encrypt_data(&role, &dek_data.dek),
                         "updated_at": DateTime::now(),
                     }
                 },
@@ -292,7 +291,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
                 },
                 doc! {
                     "$set": {
@@ -336,7 +335,7 @@ impl User {
         // get user
         let mut user = match collection
             .find_one(
-                doc! { "email": encrypt_data(&email, &dek_data.dek) },
+                doc! { "email": Encryption::encrypt_data(&email, &dek_data.dek) },
                 None,
             )
             .await
@@ -364,12 +363,12 @@ impl User {
         // hash and salt the new password
         let hashed_and_salted_pass = salt_and_hash_password(&new_password);
         // encrypt the new password
-        let encrypted_password = encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
+        let encrypted_password = Encryption::encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
 
         // update the user with the new password
         match collection
             .find_one_and_update(
-                doc! { "email": encrypt_data(&email, &dek_data.dek) },
+                doc! { "email": Encryption::encrypt_data(&email, &dek_data.dek) },
                 doc! {
                     "$set": {
                         "password": encrypted_password,
@@ -409,7 +408,7 @@ impl User {
         let new_doc = ForgetPasswordRequest {
             _id: ObjectId::new(),
             id: uuid::Uuid::new().to_string(),
-            email: encrypt_data(&email, &dek_data.dek),
+            email: Encryption::encrypt_data(&email, &dek_data.dek),
             is_used: false,
             valid_till: ten_minutes_from_now,
             created_at: DateTime::now(),
@@ -489,12 +488,12 @@ impl User {
         // hash and salt the new password
         let hashed_and_salted_pass = salt_and_hash_password(&new_password);
         // encrypt the new password
-        let encrypted_password = encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
+        let encrypted_password = Encryption::encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
 
         // update the user with the new password
         user_collection
             .find_one_and_update(
-                doc! { "email": encrypt_data(&email, &dek_data.dek) },
+                doc! { "email": Encryption::encrypt_data(&email, &dek_data.dek) },
                 doc! {
                     "$set": {
                         "password": encrypted_password,
@@ -547,7 +546,7 @@ impl User {
         match collection
             .delete_one(
                 doc! {
-                    "uid": encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
                 },
                 None,
             )
@@ -567,7 +566,7 @@ impl User {
                 match collection_dek
                     .delete_one(
                         doc! {
-                            "uid": encrypt_data(&dek_data.uid, &kek),
+                            "uid": Encryption::encrypt_data(&dek_data.uid, &kek),
                         },
                         None,
                     )

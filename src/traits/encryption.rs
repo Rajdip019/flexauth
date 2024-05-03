@@ -1,7 +1,7 @@
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
-use crate::utils::encryption_utils::encrypt_data;
+use crate::utils::encryption_utils::Encryption;
 
 pub trait Encrypt {
     fn encrypt(&mut self, key: &str) -> Self;
@@ -31,7 +31,7 @@ fn encrypt_value(value: &mut Value, key: &str) {
     match value {
         Value::String(s) => {
             // Encrypt string values
-            *s = encrypt_data(s, key);
+            *s = Encryption::encrypt_data(s, key);
         }
         Value::Object(map) => {
             // check if this is a ObjectId if yes do nothing return the same value
