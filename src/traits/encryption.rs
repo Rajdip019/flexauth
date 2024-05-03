@@ -4,14 +4,14 @@ use serde_json::Value;
 use crate::utils::encryption_utils::Encryption;
 
 pub trait Encrypt {
-    fn encrypt(&mut self, key: &str) -> Self;
+    fn encrypt(&self, key: &str) -> Self;
 }
 
 impl<T> Encrypt for T
 where
     T: Serialize + DeserializeOwned,
 {
-    fn encrypt(&mut self, key: &str) -> Self {
+    fn encrypt(&self, key: &str) -> Self {
         // Serialize the object to JSON
         let json_str = serde_json::to_string(self).unwrap();
 

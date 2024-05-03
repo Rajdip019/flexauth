@@ -98,7 +98,7 @@ impl User {
                     )
                     .await
                 {
-                    Ok(Some(mut user)) => {
+                    Ok(Some(user)) => {
                         let decrypted_user = user.decrypt(&dek_data.dek);
                         return Ok(decrypted_user);
                     }
@@ -132,7 +132,7 @@ impl User {
             )
             .await
         {
-            Ok(Some(mut user)) => {
+            Ok(Some(user)) => {
                 let decrypted_user = user.decrypt(&dek_data.dek);
                 return Ok(decrypted_user);
             }
@@ -150,7 +150,7 @@ impl User {
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
-        // let mut cursor = collection.find(None, None).await.unwrap();
+        // let cursor = collection.find(None, None).await.unwrap();
         let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
 
         let mut users = Vec::new();
@@ -159,7 +159,7 @@ impl User {
         // iterate over the users and decrypt the data
         while let Some(dek) = cursor_dek.next().await {
             let dek_data: Dek = match dek {
-                Ok(mut data) => data.decrypt(&kek),
+                Ok(data) => data.decrypt(&kek),
                 Err(_) => {
                     return Err(Error::ServerError {
                         message: "Failed to get DEK".to_string(),
@@ -181,7 +181,7 @@ impl User {
                 .unwrap();
 
             match cursor_user {
-                Some(mut user) => {
+                Some(user) => {
                     let user_data = user.decrypt(&dek_data.dek);
 
                     users.push(UserResponse {
@@ -317,7 +317,7 @@ impl User {
             }
         };
         // get user
-        let mut user = match collection
+        let user = match collection
             .find_one(
                 doc! { "email": Encryption::encrypt_data(&email, &dek_data.dek) },
                 None,
