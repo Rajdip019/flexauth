@@ -9,21 +9,12 @@ use crate::{core::user::User, errors::Error};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IDToken {
-    uid: String,
+    pub uid: String,
     iss: String,
     iat: usize,
     exp: usize,
     token_type: String,
-    data: Option<HashMap<String, String>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct RefreshTokenClaims {
-    uid: String,
-    iss: String,
-    iat: usize,
-    exp: usize,
-    data: Option<HashMap<String, String>>,
+    pub data: Option<HashMap<String, String>>,
 }
 
 fn load_private_key() -> Result<Vec<u8>, Error> {
@@ -146,23 +137,93 @@ impl IDToken {
         }
     }
 }
-// pub async fn generate_refresh_token(user: &User) -> Result<String, Box<dyn Error>> {
-//     let secret = dotenv::var("JWT_SECRET").expect("JWT_SECRET must be set");
-//     let server_url = env::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
 
-//     let header = Header::new(jwt::Algorithm::HS256);
-//     let token = jwt::encode(
-//         &header,
-//         &RefreshTokenClaims {
-//             uid: user.uid.clone(),
-//             iss: server_url,
-//             iat: chrono::Utc::now().timestamp() as usize,
-//             exp: chrono::Utc::now().timestamp() as usize + (3600 * 12), // 12h
-//             data: None,
-//         },
-//         &EncodingKey::from_secret(secret.as_ref()),
-//     )
-//     .unwrap();
+// RefreshToken struct
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshToken {
+    pub uid: String,
+    iss: String,
+    iat: usize,
+    exp: usize,
+    scope: String,
+    pub data: Option<HashMap<String, String>>,
+}
 
-//     Ok(token)
-// }
+impl RefreshToken {
+    pub fn new(uid: &str) -> Self {
+        let server_url =
+            std::env::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
+        Self {
+            uid: uid.to_string(),
+            iss: server_url,
+            iat: chrono::Utc::now().timestamp() as usize,
+            exp: chrono::Utc::now().timestamp() as usize + (3600 * 24 * 45), // 45 days
+            scope: "get_new_id_token".to_string(),
+            data: None,
+        }
+    }
+
+    pub fn sign(&self) -> Result<String, Error> {
+        let private_key = load_private_key()?;
+        let header = Header::new(jwt::Algorithm::RS256);
+        let encoding_key = match EncodingKey::from_rsa_pem(&private_key) {
+            Ok(key) => key,
+            Err(err) => {
+                eprintln!("Error creating decoding key: {}", err);
+                return Err(Error::PublicKeyLoadError {
+                    message: (err.to_string()),
+                });
+            }
+        };
+
+        match jwt::encode(&header, &self, &encoding_key) {
+            Ok(token) => return Ok(token),
+            Err(err) => {
+                return Err(Error::RefreshTokenCreationError {
+                    message: err.to_string(),
+                })
+            }
+        };
+    }
+
+    pub fn verify(token: &str) -> Result<Self, Error> {
+        let public_key = load_public_key()?;
+        let validation = Validation::new(jwt::Algorithm::RS256);
+        // Try to create a DecodingKey from the public key
+        let decoding_key = match DecodingKey::from_rsa_pem(&public_key) {
+            Ok(key) => key,
+            Err(err) => {
+                eprintln!("Error creating decoding key: {}", err);
+                return Err(Error::PublicKeyLoadError {
+                    message: (err.to_string()),
+                });
+            }
+        };
+        // return false if the token is not valid
+        match jwt::decode::<RefreshToken>(&token, &decoding_key, &validation) {
+            Ok(val) => {
+                let token_data = val.claims;
+                Ok(token_data)
+            }
+            Err(e) => match e {
+                // check if ExpiredSignature
+                _ if e.to_string().contains("ExpiredSignature") => {
+                    return Err(Error::ExpiredSignature {
+                        message: "Expired signature".to_string(),
+                    })
+                }
+                // check if InvalidSignature
+                _ if e.to_string().contains("InvalidSignature") => {
+                    return Err(Error::SignatureVerificationError {
+                        message: "Invalid signature".to_string(),
+                    })
+                }
+                _ => {
+                    return Err(Error::InvalidToken {
+                        message: "Invalid token".to_string(),
+                    })
+                }
+            },
+        }
+    }
+}

@@ -22,16 +22,19 @@ pub enum Error {
 
     // -- Session Errors
     InvalidToken { message: String },
-
-    ServerError { message: String },
-
-    // -- Encryption Errors
-    KeyNotFound { message: String },
+    RefreshTokenCreationError { message: String },
+    IdTokenCreationError { message: String },
     PublicKeyLoadError { message: String },
     PrivateKeyLoadError { message: String },
     SignatureVerificationError { message: String },
     ExpiredSignature { message: String },
-    IdTokenCreationError { message: String },
+    SessionExpired { message: String },
+
+    
+    // -- Encryption Errors
+    KeyNotFound { message: String },
+
+    ServerError { message: String },
 }
 
 impl IntoResponse for Error {
@@ -104,12 +107,22 @@ impl Error {
             Self::InvalidToken { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_TOKEN)
             }
-
-            Self::ServerError { message: _ } => (
+            Self::IdTokenCreationError { message: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
             ),
-            Self::IdTokenCreationError { message: _ } => (
+
+            Self::RefreshTokenCreationError { message: _ } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ClientError::SERVICE_ERROR,
+            ),
+            
+            Self::SessionExpired { message: _ } => (
+                StatusCode::UNAUTHORIZED,
+                ClientError::SESSION_EXPIRED,
+            ),
+
+            Self::ServerError { message: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
             ),
@@ -134,6 +147,7 @@ pub enum ClientError {
     INVALID_TOKEN,
     SIGNATURE_VERIFICATION_ERROR,
     EXPIRED_SIGNATURE,
+    SESSION_EXPIRED
 }
 
 // region:    --- Error Boilerplate
