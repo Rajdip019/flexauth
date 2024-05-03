@@ -1,12 +1,12 @@
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 
-use crate::{core::session::Session, errors::{Error, Result}, models::{session_model::VerifyJwt, user_model::UserIdPayload}, utils::session_utils::IDToken, AppState};
+use crate::{core::session::Session, errors::{Error, Result}, models::{session_model::{SessionResponse, VerifySession}, user_model::UserIdPayload}, utils::session_utils::IDToken, AppState};
 
 #[debug_handler]
 pub async fn verify_session(
     State(state): State<AppState>,
-    payload: Json<VerifyJwt>,
+    payload: Json<VerifySession>,
 ) -> Result<Json<IDToken>> {
     // check if the token is not empty
     if payload.token.is_empty() {
@@ -27,7 +27,7 @@ pub async fn verify_session(
 pub async fn get_all_from_uid(
     State(state): State<AppState>,
     payload: Json<UserIdPayload>,
-) -> Result<Json<Vec<Session>>> {
+) -> Result<Json<Vec<SessionResponse>>> {
     // check if the token is not empty
     if payload.uid.is_empty() {
         return Err(Error::InvalidPayload { message: "Invalid payload passed".to_string() });
@@ -39,6 +39,5 @@ pub async fn get_all_from_uid(
             return Ok(Json(data));
         }
         Err(e) => return Err(e),
-        
     };
 }
