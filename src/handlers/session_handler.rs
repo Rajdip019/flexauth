@@ -2,7 +2,7 @@ use axum::Json;
 use axum_macros::debug_handler;
 use serde_json::{json, Value};
 
-use crate::{errors::{Error, Result}, models::session_model::VerifyJwt, utils::session_utils::verify_jwt};
+use crate::{errors::{Error, Result}, models::session_model::VerifyJwt, utils::session_utils::IDToken};
 
 #[debug_handler]
 pub async fn verify_jwt_handler(
@@ -14,8 +14,8 @@ pub async fn verify_jwt_handler(
     }
 
     // verify the token
-    let _ = match verify_jwt(&payload.token) {
-        Ok(val) => return Ok(Json(json!(*val))),
+    let _ = match IDToken::verify(&payload.token) {
+        Ok(val) => return Ok(Json(json!(val))),
         Err(e) => return Err(e),
     };
 }
