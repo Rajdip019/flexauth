@@ -31,7 +31,7 @@ impl Session {
         let db = mongo_client.database("test");
         let collection_session: Collection<Session> = db.collection("sessions");
 
-        let mut session = self.clone();
+        let session = self.clone();
         let encrypted_session = session.encrypt(key);
 
         match collection_session.insert_one(encrypted_session, None).await {
