@@ -96,7 +96,7 @@ impl IDToken {
         };
     }
 
-    pub fn verify(token: &str) -> Result<Self, Error> {
+    pub fn verify(token: &str) -> Result<(Self, bool), Error> {
         let public_key = load_public_key()?;
         let validation = Validation::new(jwt::Algorithm::RS256);
         // Try to create a DecodingKey from the public key
@@ -113,17 +113,28 @@ impl IDToken {
         match jwt::decode::<IDToken>(&token, &decoding_key, &validation) {
             Ok(val) => {
                 let token_data = val.claims;
-                Ok(token_data)
+                Ok((token_data, true))
             }
-            Err(e) => match e {
+            Err(e) => match e.kind() {
                 // check if ExpiredSignature
-                _ if e.to_string().contains("ExpiredSignature") => {
-                    return Err(Error::ExpiredSignature {
-                        message: "Expired signature".to_string(),
-                    })
+                jwt::errors::ErrorKind::ExpiredSignature => {
+                    // get token claims even if it is expired to check the data by decoding it with exp flag set to false
+                    let mut validation = Validation::new(jwt::Algorithm::RS256);
+                    validation.validate_exp = false;
+                    match jwt::decode::<IDToken>(&token, &decoding_key, &validation) {
+                        Ok(val) => {
+                            let token_data = val.claims;
+                            Ok((token_data, false))
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Error decoding token".to_string(),
+                            })
+                        }
+                    }
                 }
                 // check if InvalidSignature
-                _ if e.to_string().contains("InvalidSignature") => {
+                jwt::errors::ErrorKind::InvalidSignature => {
                     return Err(Error::SignatureVerificationError {
                         message: "Invalid signature".to_string(),
                     })
@@ -136,6 +147,7 @@ impl IDToken {
             },
         }
     }
+    
 }
 
 // RefreshToken struct

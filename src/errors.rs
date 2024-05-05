@@ -29,6 +29,7 @@ pub enum Error {
     SignatureVerificationError { message: String },
     ExpiredSignature { message: String },
     SessionExpired { message: String },
+    ActiveSessionExists { message: String },
 
     
     // -- Encryption Errors
@@ -127,6 +128,11 @@ impl Error {
                 ClientError::SERVICE_ERROR,
             ),
 
+            Self::ActiveSessionExists { message: _ } => (
+                StatusCode::CONFLICT,
+                ClientError::ACTIVE_SESSION_EXISTS,
+            ),
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -147,7 +153,8 @@ pub enum ClientError {
     INVALID_TOKEN,
     SIGNATURE_VERIFICATION_ERROR,
     EXPIRED_SIGNATURE,
-    SESSION_EXPIRED
+    SESSION_EXPIRED,
+    ACTIVE_SESSION_EXISTS,
 }
 
 // region:    --- Error Boilerplate
