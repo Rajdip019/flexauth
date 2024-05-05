@@ -16,7 +16,13 @@ pub async fn verify_session(
     // verify the token
     match Session::verify(&state.mongo_client, &payload.token).await {
         Ok(data) => {
-            return Ok(Json(data));
+            return {
+                if data.1 {
+                    Ok(Json(data.0))
+                } else {
+                    Err(Error::SessionExpired { message: "Session expired".to_string() })
+                }
+            }
         }
         Err(e) => return Err(e),
         
