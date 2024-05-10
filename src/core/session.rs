@@ -11,12 +11,14 @@ use bson::{doc, DateTime};
 use futures::StreamExt;
 use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::{dek::Dek, user::User};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub uid: String,
+    pub session_id: String,
     pub email: String,
     pub id_token: String,
     pub refresh_token: String,
@@ -40,6 +42,7 @@ impl Session {
 
         Self {
             uid: user.uid.to_string(),
+            session_id: Uuid::new_v4().to_string(),
             email: user.email.to_string(),
             id_token,
             refresh_token,
@@ -120,15 +123,21 @@ impl Session {
         token_data
     }
 
-    pub async fn refresh_session(
+    pub async fn refresh(
         mongo_client: &Client,
+        session_id: &str,
         id_token: &str,
         refresh_token: &str,
     ) -> Result<(String, String)> {
         // verify refresh token 
         match RefreshToken::verify(&refresh_token) {
             Ok(_) => {}
-            Err(e) => return Err(e),
+            Err(e) => {
+                match Self::revoke(&mongo_client, &session_id).await {
+                    Ok(_) => return Err(e),
+                    Err(err) => return Err(err),
+                }
+            },
         }
         match Self::verify(&mongo_client, &id_token).await {
             Ok(token_verify_result) => {
@@ -147,68 +156,79 @@ impl Session {
                         Encryption::encrypt_data(&refresh_token, &dek_data.dek);
 
                     match collection_session
-                        .count_documents(
+                        .find_one(
                             doc! {
                                 "uid": &encrypted_id,
-                                "id_token": &encrypted_id_token,
-                                "refresh_token": &encrypted_refresh_token,
+                                "session_id": &session_id,
                                 "is_revoked": false,
                             },
                             None,
                         )
                         .await
                     {
-                        Ok(count) => {
-                            if count == 1 {
-                                // generate a new id token and refresh token
-                                let user = match User::get_from_uid(&mongo_client, &token_verify_result.0.uid).await {
-                                    Ok(user) => user,
-                                    Err(e) => return Err(e),
-                                };
-                                let new_id_token = match IDToken::new(&user).sign() {
-                                    Ok(token) => token,
-                                    Err(_) => "".to_string(),
-                                };
+                        Ok(session) => {
+                            match session {
+                                Some(data) => {
+                                    let decrypted_session = data.decrypt(&dek_data.dek);
+                                    if decrypted_session.id_token == id_token
+                                        && decrypted_session.refresh_token == refresh_token
+                                    {
+                                        // generate a new id token and refresh token
+                                        let user = match User::get_from_uid(&mongo_client, &token_verify_result.0.uid).await {
+                                            Ok(user) => user,
+                                            Err(e) => return Err(e),
+                                        };
+                                        let new_id_token = match IDToken::new(&user).sign() {
+                                            Ok(token) => token,
+                                            Err(_) => "".to_string(),
+                                        };
 
-                                let new_refresh_token = match RefreshToken::new(&token_verify_result.0.uid).sign() {
-                                    Ok(token) => token,
-                                    Err(_) => "".to_string(),
-                                };
+                                        let new_refresh_token = match RefreshToken::new(&token_verify_result.0.uid).sign() {
+                                            Ok(token) => token,
+                                            Err(_) => "".to_string(),
+                                        };
 
-                                // encrypt the new tokens
-                                let new_id_token_encrypted = Encryption::encrypt_data(&new_id_token, &dek_data.dek);
-                                let new_refresh_token_encrypted = Encryption::encrypt_data(&new_refresh_token, &dek_data.dek);
+                                        // encrypt the new tokens
+                                        let new_id_token_encrypted = Encryption::encrypt_data(&new_id_token, &dek_data.dek);
+                                        let new_refresh_token_encrypted = Encryption::encrypt_data(&new_refresh_token, &dek_data.dek);
 
-                                match collection_session
-                                    .update_one(
-                                        doc! {
-                                            "uid": encrypted_id,
-                                            "id_token": encrypted_id_token,
-                                            "refresh_token": encrypted_refresh_token,
-                                            "is_revoked": false,
-                                        },
-                                        doc! {
-                                            "$set": {
-                                                "id_token": new_id_token_encrypted,
-                                                "refresh_token": new_refresh_token_encrypted,
-                                                "updated_at": DateTime::now(),
-                                            }
-                                        },
-                                        None,
-                                    )
-                                    .await
-                                {
-                                    Ok(_) => return Ok((new_id_token, new_refresh_token)),
-                                    Err(e) => return Err(Error::ServerError { 
-                                        message: e.to_string(),
-                                    }),
-                                };
-                            } else {
-                                match Self::revoke_all(&mongo_client, &token_verify_result.0.uid).await {
-                                    Ok(_) => return Err(Error::SessionExpired {
+                                        match collection_session
+                                            .update_one(
+                                                doc! {
+                                                    "uid": encrypted_id,
+                                                    "id_token": encrypted_id_token,
+                                                    "refresh_token": encrypted_refresh_token,
+                                                    "is_revoked": false,
+                                                },
+                                                doc! {
+                                                    "$set": {
+                                                        "id_token": new_id_token_encrypted,
+                                                        "refresh_token": new_refresh_token_encrypted,
+                                                        "updated_at": DateTime::now(),
+                                                    }
+                                                },
+                                                None,
+                                            )
+                                            .await
+                                        {
+                                            Ok(_) => return Ok((new_id_token, new_refresh_token)),
+                                            Err(e) => return Err(Error::ServerError { 
+                                                message: e.to_string(),
+                                            }),
+                                        };
+                                    } else {
+                                        match Self::revoke(&mongo_client, &session_id).await {
+                                            Ok(_) => return Err(Error::InvalidToken {
+                                                message: "Invalid token".to_string(),
+                                            }),
+                                            Err(e) => return Err(e),
+                                        }
+                                    }
+                                }
+                                None => {
+                                    return Err(Error::SessionExpired {
                                         message: "Invalid token".to_string(),
-                                    }),
-                                    Err(e) => return Err(e),
+                                    });
                                 }
                             }
                         }
@@ -223,7 +243,10 @@ impl Session {
                 }
             } 
             Err(e) => {
-                return Err(e);
+                match Self::revoke(&mongo_client, &session_id).await {
+                    Ok(_) => return Err(e),
+                    Err(err) => return Err(err),
+                }
             }
         };
     }
@@ -298,13 +321,13 @@ impl Session {
         }
     }
 
-    pub async fn revoke(id_token: &str, refresh_token: &str, mongo_client: &Client) -> Result<()> {
+    pub async fn revoke(mongo_client: &Client, session_id: &str) -> Result<()> {
         let db = mongo_client.database("test");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
             .update_one(
-                doc! {"id_token": id_token, "refresh_token": refresh_token },
+                doc! {"session_id": session_id},
                 doc! {"$set": {"is_revoked": true}},
                 None,
             )
@@ -317,13 +340,13 @@ impl Session {
         }
     }
 
-    pub async fn delete(id_token: &str, refresh_token: &str, mongo_client: &Client) -> Result<()> {
+    pub async fn delete(mongo_client: &Client, session_id: &str) -> Result<()> {
         let db = mongo_client.database("test");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
             .delete_one(
-                doc! {"id_token": id_token, "refresh_token": refresh_token },
+                doc! { "session_id": session_id },
                 None,
             )
             .await

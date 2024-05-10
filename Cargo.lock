@@ -1001,6 +1001,7 @@ dependencies = [
  "tokio",
  "tower-cookies",
  "tower-http",
+ "uuid",
 ]
 
 [[package]]

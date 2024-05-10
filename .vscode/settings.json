@@ -9,6 +9,7 @@
         "dotenv",
         "jsonwebtoken",
         "lettre",
-        "signin"
+        "signin",
+        "signout"
     ]
 }
