@@ -7,7 +7,7 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::auth_model::{SignInPayload, SignUpPayload},
-    utils::hashing_utils::verify_password_hash,
+    utils::{encryption_utils::Encryption, hashing_utils::verify_password_hash},
 };
 
 pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Result<Json<Value>> {
@@ -57,7 +57,7 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
     };
 
     // add the dek to the deks collection
-    match Dek::new(&user.uid, &user.email, &dek)
+    let dek_data = match Dek::new(&user.uid, &user.email, &dek)
         .encrypt_and_add(&mongo_client)
         .await
     {
@@ -80,6 +80,7 @@ pub async fn sign_up(mongo_client: &Client, payload: Json<SignUpPayload>) -> Res
             "email_verified": user.email_verified,
             "is_active": user.is_active,
             "session": {
+                "session_id": Encryption::encrypt_data(&session.session_id, &dek_data.dek),
                 "id_token" : session.id_token,
                 "refresh_token" : session.refresh_token,
             },
@@ -122,6 +123,7 @@ pub async fn sign_in(mongo_client: &Client, payload: Json<SignInPayload>) -> Res
                 "email_verified": user.email_verified,
                 "is_active": user.is_active,
                 "session": {
+                    "session_id": Encryption::encrypt_data(&session.session_id, &dek_data.dek),
                     "id_token" : session.id_token,
                     "refresh_token" : session.refresh_token,
                 },
