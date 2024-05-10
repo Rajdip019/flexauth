@@ -3,10 +3,7 @@ use axum_macros::debug_handler;
 use serde_json::Value;
 
 use crate::{
-    errors::Result,
-    models::auth_model::{SignInPayload, SignUpPayload},
-    utils::auth_utils::{sign_in, sign_up},
-    AppState,
+    core::session::Session, errors::{Error, Result}, models::{auth_model::{SignInPayload, SignUpPayload}, session_model::{RevokeSessionsPayload, RevokeSessionsResult}}, utils::auth_utils::{sign_in, sign_up}, AppState
 };
 
 #[debug_handler]
@@ -32,4 +29,27 @@ pub async fn signin_handler(
         Ok(res) => Ok(res),
         Err(e) => Err(e),
     }
+}
+
+pub async fn signout_handler(
+    State(state): State<AppState>,
+    payload: Json<RevokeSessionsPayload>,
+) -> Result<Json<RevokeSessionsResult>> {
+    println!(">> HANDLER: signout_handler called");
+
+    if payload.session_id.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload passed".to_string(),
+        });
+    }
+
+    match Session::revoke(&state.mongo_client, &payload.session_id).await {
+        Ok(_) => Ok(Json(
+            RevokeSessionsResult {
+                message: "Session revoked successfully".to_string(),
+            }
+        )),
+        Err(e) => Err(e),
+    }
+
 }
