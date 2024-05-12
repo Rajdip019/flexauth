@@ -15,6 +15,8 @@ pub enum Error {
     // -- User Errors
     UserNotFound { message: String },
     UserAlreadyExists { message: String },
+    WrongCredentials { message: String },
+    UserBlocked { message: String },
 
     // -- Password Errors
     InvalidPassword { message: String },
@@ -73,6 +75,14 @@ impl Error {
             // -- Password Errors
             Self::InvalidPassword { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_PASSWORD)
+            }
+
+            Self::WrongCredentials { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::WRONG_CREDENTIALS)
+            }
+
+            Self::UserBlocked { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::USER_BLOCKED)
             }
 
             Self::KeyNotFound { message: _ } => (
@@ -149,6 +159,8 @@ pub enum ClientError {
     SERVICE_ERROR,
     USER_ALREADY_EXISTS,
     INVALID_PASSWORD,
+    WRONG_CREDENTIALS,
+    USER_BLOCKED,
     RESET_PASSWORD_LINK_EXPIRED,
     INVALID_TOKEN,
     SIGNATURE_VERIFICATION_ERROR,

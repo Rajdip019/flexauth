@@ -25,6 +25,8 @@ pub struct User {
     pub password: String,
     pub email_verified: bool,
     pub is_active: bool,
+    pub failed_login_attempts: i32,
+    pub blocked_until: Option<DateTime>,
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
 }
@@ -40,6 +42,8 @@ impl User {
             password: password.to_string(),
             email_verified: false,
             is_active: true,
+            failed_login_attempts: 0,
+            blocked_until: None,
             created_at: Some(DateTime::now()),
             updated_at: Some(DateTime::now()),
         }
@@ -279,6 +283,146 @@ impl User {
                     });
                 }
                 return Ok(is_active.to_owned());
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to update User".to_string(),
+                })
+            }
+        }
+    }
+
+    pub async fn increase_failed_login_attempt(
+        mongo_client: &Client,
+        email: &str,
+    ) -> Result<i32> {
+        let db = mongo_client.database("test");
+        let collection: Collection<User> = db.collection("users");
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // find the user in the users collection using the uid
+        match collection
+            .update_one(
+                doc! {
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                },
+                doc! {
+                    "$inc": {
+                        "failed_login_attempts": 1
+                    },
+                    "$set": {
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+        {
+            Ok(cursor) => {
+                let modified_count = cursor.modified_count;
+
+                // Return Error if User is not there
+                if modified_count == 0 {
+                    // send back a 404 to
+                    return Err(Error::UserNotFound {
+                        message: "User not found".to_string(),
+                    });
+                }
+
+                // check if the failed login attempts is greater than 5 then add_block_user_until 180 seconds and if it is 10 then for 10 minutes if its 15 then 1hr
+                let user = match User::get_from_email(&mongo_client, email).await {
+                    Ok(user) => user,
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+
+                if user.failed_login_attempts == 5 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 180000;
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(5);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else if user.failed_login_attempts == 10 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 600000;
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(10);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else if user.failed_login_attempts == 15 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 3600000;
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(15);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else {
+                    return Ok(user.failed_login_attempts);
+                }
             }
             Err(_) => {
                 return Err(Error::ServerError {

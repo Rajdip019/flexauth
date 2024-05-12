@@ -1,4 +1,4 @@
-use bson::doc;
+use bson::{doc, DateTime};
 use mongodb::{Client, Collection};
 
 use crate::{
@@ -91,6 +91,19 @@ impl Auth {
             Err(e) => return Err(e),
         };
 
+        // check if the user has a blocked_until date greater than the current date check in milliseconds from DateTime type
+        match user.blocked_until {
+            Some(blocked_until_time) => {
+                let current_time = DateTime::now().timestamp_millis();
+                if blocked_until_time.timestamp_millis() > current_time {
+                    return Err(Error::UserBlocked {
+                        message: "User is blocked".to_string(),
+                    });
+                }
+            }
+            None => {}
+        }
+
         let dek_data = match Dek::get(&mongo_client, &user.uid).await {
             Ok(dek_data) => dek_data,
             Err(e) => return Err(e),
@@ -122,8 +135,12 @@ impl Auth {
 
             Ok(res)
         } else {
-            Err(Error::UserNotFound {
-                message: "User not found".to_string(),
+            match User::increase_failed_login_attempt(&mongo_client, &user.email).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+            Err(Error::WrongCredentials {
+                message: "Invalid credentials".to_string(),
             })
         }
     }
