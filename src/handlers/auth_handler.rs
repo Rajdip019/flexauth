@@ -1,4 +1,4 @@
-use axum::{extract::State, Json};
+use axum::{extract::State, http::{header, HeaderMap}, Json};
 use axum_macros::debug_handler;
 
 use crate::{
@@ -45,6 +45,7 @@ pub async fn signup_handler(
 
 pub async fn signin_handler(
     State(state): State<AppState>,
+    header: HeaderMap,
     payload: Json<SignInPayload>,
 ) -> Result<Json<SignInOrSignUpResponse>> {
     println!(">> HANDLER: signin_handler called");
@@ -55,7 +56,13 @@ pub async fn signin_handler(
         });
     }
 
-    match Auth::sign_in(&state.mongo_client, &payload.email, &payload.password).await {
+    // get user-agent form the header
+    let user_agent = match header.get(header::USER_AGENT) {
+        Some(ua) => ua.to_str().unwrap().to_string(),
+        None => "".to_string(),
+    };
+
+    match Auth::sign_in(&state.mongo_client, &payload.email, &payload.password, &user_agent).await {
         Ok(res) => Ok(Json(res)),
         Err(e) => Err(e),
     }
