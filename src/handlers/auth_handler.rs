@@ -1,20 +1,44 @@
 use axum::{extract::State, Json};
 use axum_macros::debug_handler;
-use serde_json::Value;
 
 use crate::{
-    core::session::Session, errors::{Error, Result}, models::{auth_model::{SignInPayload, SignUpPayload}, session_model::{RevokeSessionsPayload, RevokeSessionsResult}}, utils::auth_utils::{sign_in, sign_up}, AppState
+    core::{auth::Auth, session::Session},
+    errors::{Error, Result},
+    models::{
+        auth_model::{SignInOrSignUpResponse, SignInPayload, SignUpPayload},
+        session_model::{RevokeSessionsPayload, RevokeSessionsResult},
+    },
+    AppState,
 };
 
 #[debug_handler]
 pub async fn signup_handler(
     State(state): State<AppState>,
     payload: Json<SignUpPayload>,
-) -> Result<Json<Value>> {
+) -> Result<Json<SignInOrSignUpResponse>> {
     println!(">> HANDLER: signup_handler called");
 
-    match sign_up(&state.mongo_client, payload).await {
-        Ok(res) => Ok(res),
+    // check if the payload is empty
+    if payload.name.is_empty()
+        || payload.email.is_empty()
+        || payload.role.is_empty()
+        || payload.password.is_empty()
+    {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload".to_string(),
+        });
+    }
+
+    match Auth::sign_up(
+        &state.mongo_client,
+        &payload.name,
+        &payload.email,
+        &payload.role,
+        &payload.password,
+    )
+    .await
+    {
+        Ok(res) => Ok(Json(res)),
         Err(e) => Err(e),
     }
 }
@@ -22,11 +46,17 @@ pub async fn signup_handler(
 pub async fn signin_handler(
     State(state): State<AppState>,
     payload: Json<SignInPayload>,
-) -> Result<Json<Value>> {
+) -> Result<Json<SignInOrSignUpResponse>> {
     println!(">> HANDLER: signin_handler called");
+    // check if the payload is empty
+    if payload.email.is_empty() || payload.password.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload".to_string(),
+        });
+    }
 
-    match sign_in(&state.mongo_client, payload).await {
-        Ok(res) => Ok(res),
+    match Auth::sign_in(&state.mongo_client, &payload.email, &payload.password).await {
+        Ok(res) => Ok(Json(res)),
         Err(e) => Err(e),
     }
 }
@@ -44,12 +74,9 @@ pub async fn signout_handler(
     }
 
     match Session::revoke(&state.mongo_client, &payload.session_id).await {
-        Ok(_) => Ok(Json(
-            RevokeSessionsResult {
-                message: "Session revoked successfully".to_string(),
-            }
-        )),
+        Ok(_) => Ok(Json(RevokeSessionsResult {
+            message: "Session revoked successfully".to_string(),
+        })),
         Err(e) => Err(e),
     }
-
 }
