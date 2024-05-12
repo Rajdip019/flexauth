@@ -432,6 +432,55 @@ impl User {
         }
     }
 
+    pub async fn reset_failed_login_attempt(
+        mongo_client: &Client,
+        email: &str,
+    ) -> Result<String> {
+        let db = mongo_client.database("test");
+        let collection: Collection<User> = db.collection("users");
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // find the user in the users collection using the uid
+        match collection
+            .update_one(
+                doc! {
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                },
+                doc! {
+                    "$set": {
+                        "failed_login_attempts": 0,
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+        {
+            Ok(cursor) => {
+                let modified_count = cursor.modified_count;
+
+                // Return Error if User is not there
+                if modified_count == 0 {
+                    // send back a 404 to
+                    return Err(Error::UserNotFound {
+                        message: "User not found".to_string(),
+                    });
+                }
+                return Ok("Failed login attempts reset".to_string());
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to update User".to_string(),
+                })
+            }
+        }
+    }
+
     pub async fn change_password(mongo_client: &Client, email: &str, old_password: &str, new_password: &str) -> Result<String> {
         let db = mongo_client.database("test");
         let collection: Collection<User> = db.collection("users");

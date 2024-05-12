@@ -116,6 +116,12 @@ impl Auth {
             Err(e) => return Err(e),
         };
 
+            // make the failed login attempts to 0
+            match User::reset_failed_login_attempt(&mongo_client, &user.email).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+
             let res = SignInOrSignUpResponse {
                 message: "Signin successful".to_string(),
                 uid: user.uid,
