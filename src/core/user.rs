@@ -5,7 +5,7 @@ use crate::{
     models::{password_model::ForgetPasswordRequest, user_model::UserResponse},
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
-        email_utils::Email, encryption_utils::Encryption, hashing_utils::{salt_and_hash_password, verify_password_hash}
+        email_utils::Email, encryption_utils::Encryption, password_utils::Password
     },
 };
 use bson::{doc, oid::ObjectId, uuid, DateTime};
@@ -48,7 +48,7 @@ impl User {
     pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<Self> {
         let db = mongo_client.database("test");
         let mut user = self.clone();
-        user.password = salt_and_hash_password(user.password.as_str());
+        user.password = Password::salt_and_hash(user.password.as_str());
         let collection: Collection<User> = db.collection("users");
         match collection.insert_one(user.encrypt(&dek), None).await {
             Ok(_) => return Ok(user),
@@ -61,12 +61,6 @@ impl User {
     }
 
     pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<User> {
-        // check if the payload is empty
-        match email.is_empty() {
-            true => Err(Error::InvalidPayload {
-                message: "Invalid payload".to_string(),
-            }),
-            false => {
                 let user_collection: Collection<User> =
                     mongo_client.database("test").collection("users");
                 let dek_data = match Dek::get(&mongo_client, email).await {
@@ -98,8 +92,6 @@ impl User {
                         message: "Failed to get User".to_string(),
                     }),
                 }
-            }
-        }
     }
 
     pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<User> {
@@ -328,13 +320,13 @@ impl User {
 
         let decrypted_user = user.decrypt(&dek_data.dek);
         
-        if !verify_password_hash(&old_password, &decrypted_user.password) {
+        if !Password::verify_hash(&old_password, &decrypted_user.password) {
             return Err(Error::InvalidPassword {
                 message: "New password cannot be the same as the old password".to_string(),
             });
         }
         // hash and salt the new password
-        let hashed_and_salted_pass = salt_and_hash_password(&new_password);
+        let hashed_and_salted_pass = Password::salt_and_hash(&new_password);
         // encrypt the new password
         let encrypted_password = Encryption::encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
 
@@ -459,7 +451,7 @@ impl User {
         };
 
         // hash and salt the new password
-        let hashed_and_salted_pass = salt_and_hash_password(&new_password);
+        let hashed_and_salted_pass = Password::salt_and_hash(&new_password);
         // encrypt the new password
         let encrypted_password = Encryption::encrypt_data(&hashed_and_salted_pass, &dek_data.dek);
 

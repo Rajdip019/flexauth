@@ -150,18 +150,25 @@ pub async fn get_user_email_handler(
     payload: Json<UserEmailPayload>,
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_email_handler called");
+    if payload.email.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload".to_string(),
+        });
+    }
 
     match User::get_from_email(&state.mongo_client, &payload.email).await {
-        Ok(user) => return Ok(Json(UserResponse {
-            uid: user.uid,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            is_active: user.is_active,
-            email_verified: user.email_verified,
-            created_at: user.created_at,
-            updated_at: user.updated_at,
-        })),
+        Ok(user) => {
+            return Ok(Json(UserResponse {
+                uid: user.uid,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                is_active: user.is_active,
+                email_verified: user.email_verified,
+                created_at: user.created_at,
+                updated_at: user.updated_at,
+            }))
+        }
         Err(e) => return Err(e),
     }
 }
@@ -172,18 +179,25 @@ pub async fn get_user_id_handler(
     payload: Json<UserIdPayload>,
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_id handler called");
+    if payload.uid.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload".to_string(),
+        });
+    }
 
     match User::get_from_uid(&state.mongo_client, &payload.uid).await {
-        Ok(user) => return Ok(Json(UserResponse {
-            uid: user.uid,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            is_active: user.is_active,
-            email_verified: user.email_verified,
-            created_at: user.created_at,
-            updated_at: user.updated_at,
-        })),
+        Ok(user) => {
+            return Ok(Json(UserResponse {
+                uid: user.uid,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                is_active: user.is_active,
+                email_verified: user.email_verified,
+                created_at: user.created_at,
+                updated_at: user.updated_at,
+            }))
+        }
         Err(e) => return Err(e),
     }
 }
@@ -210,7 +224,7 @@ pub async fn delete_user_handler(
             return Ok(Json(UserEmailResponse {
                 message: "User deleted".to_string(),
                 email: payload.email.to_owned(),
-            }))
+            }));
         }
         Err(e) => return Err(e),
     }
