@@ -17,7 +17,7 @@ pub struct IDToken {
     pub data: Option<HashMap<String, String>>,
 }
 
-fn load_private_key() -> Result<Vec<u8>, Error> {
+pub fn load_private_key() -> Result<Vec<u8>, Error> {
     let private_key_content = fs::read("private_key.pem");
     let rsa = Rsa::private_key_from_pem(&private_key_content.unwrap()).unwrap();
     let private_key = PKey::from_rsa(rsa).unwrap();
@@ -32,7 +32,7 @@ fn load_private_key() -> Result<Vec<u8>, Error> {
 }
 
 // Load public key from the private key
-fn load_public_key() -> Result<Vec<u8>, Error> {
+pub fn load_public_key() -> Result<Vec<u8>, Error> {
     let private_key_content = fs::read("private_key.pem");
     let rsa = Rsa::private_key_from_pem(&private_key_content.unwrap()).unwrap();
     let private_key = PKey::from_rsa(rsa).unwrap();
