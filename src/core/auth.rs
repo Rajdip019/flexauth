@@ -84,6 +84,7 @@ impl Auth {
         mongo_client: &Client,
         email: &str,
         password: &str,
+        user_agent: &str,
     ) -> Result<SignInOrSignUpResponse> {
         let user = match User::get_from_email(&mongo_client, email).await {
             Ok(user) => user,
@@ -97,28 +98,10 @@ impl Auth {
 
         // verify the password
         if Password::verify_hash(password, &user.password) {
-            let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek_data.dek).await {
+            let session = match Session::new(&user, &user_agent).encrypt_add(&mongo_client, &dek_data.dek).await {
             Ok(session) => session,
             Err(e) => return Err(e),
         };
-            // let res = Json(json!({
-            //     "message": "Signin successful",
-            //     "user": {
-            //         "uid": user.uid,
-            //         "name": user.name,
-            //         "email": user.email,
-            //         "role": user.role,
-            //         "created_at": user.created_at,
-            //         "updated_at": user.updated_at,
-            //         "email_verified": user.email_verified,
-            //         "is_active": user.is_active,
-            //         "session": {
-            //             "session_id": Encryption::encrypt_data(&session.session_id, &dek_data.dek),
-            //             "id_token" : session.id_token,
-            //             "refresh_token" : session.refresh_token,
-            //         },
-            //     },
-            // }));
 
             let res = SignInOrSignUpResponse {
                 message: "Signin successful".to_string(),
