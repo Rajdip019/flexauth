@@ -20,7 +20,7 @@ impl Auth {
     ) -> Result<SignInOrSignUpResponse> {
         println!(">> HANDLER: add_user_handler called");
 
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
 
         let collection: Collection<User> = db.collection("users");
         let cursor = collection

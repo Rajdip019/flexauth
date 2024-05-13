@@ -33,7 +33,7 @@ pub async fn init_users(mongo_client: Client) {
     ];
 
     // check if the users already exist
-    let db = mongo_client.database("test");
+    let db = mongo_client.database("auth");
     let collection: Collection<User> = db.collection("users");
     let cursor = collection.count_documents(None, None).await.unwrap();
 
