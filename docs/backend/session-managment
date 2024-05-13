@@ -1,7 +1,7 @@
 
 # Session Management
 
-The session management is done in such a way that you can track each and every user session while giving users a long lived sessions in multiple devices. Also any detected miscellaneous activity leads to revoking the user session. 
+The session management is done in such a way that you can track each and every user session while giving users long-lived sessions in multiple devices. Also any detected miscellaneous activity leads to revoking the user session. 
 
 
 ## Tokens issues for a session
