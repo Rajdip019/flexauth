@@ -1,7 +1,7 @@
 
 # Session Management
 
-The session management is done in such a way that you can track each and every user session while giving users long-lived sessions in multiple devices. Also any detected miscellaneous activity leads to revoking the user session. 
+The session management is done in such a way that you can track each and every user session while giving users long-lived sessions on multiple devices. Also, any detected miscellaneous activity leads to revoking the user session. 
 
 
 ## Tokens issues for a session
@@ -11,7 +11,7 @@ We are using multiple tokens for a **session**.
 ### Hashing Algorithms used.
 - `Session ID`: Each session of a new device/browser makes a new user session and is encrypted by the user `DEK`. For more info. Session ID id is the main session Identifier - [User Data Protection](https://github.com/Rajdip019/in-house-auth/blob/main/docs/backend/user-data-protection.md)
 - `ID Token`: Holds the identity of the user. An ID token is lived for 1 hour.
-- `Refresh Token`: Holds the capability to refresh the session. A refresh token lives for 45 days. Although refresh token life is shorted by the ID Token as on refresh token can refresh only one session it is paired with.
+- `Refresh Token`: Holds the capability to refresh the session. A refresh token lives for 45 days. Although the refresh token life is shorted by the ID Token as on refresh token can refresh only one session it is paired with.
 
 
 ## Verify Session
