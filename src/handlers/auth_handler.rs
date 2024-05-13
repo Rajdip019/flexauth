@@ -8,6 +8,7 @@ use crate::{
         auth_model::{SignInOrSignUpResponse, SignInPayload, SignUpPayload},
         session_model::{RevokeSessionsPayload, RevokeSessionsResult},
     },
+    utils::validation_utils::Validation,
     AppState,
 };
 
@@ -26,6 +27,18 @@ pub async fn signup_handler(
     {
         return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
+        });
+    }
+
+    if !Validation::password(&payload.password) {
+        return Err(Error::InvalidPayload {
+            message: "The password must contain at least one alphabetic character (uppercase or lowercase), at least one digit, and must be at least 8 characters long.".to_string(),
         });
     }
 
@@ -52,6 +65,18 @@ pub async fn signin_handler(
     if payload.email.is_empty() || payload.password.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
+        });
+    }
+
+    if !Validation::password(&payload.password) {
+        return Err(Error::InvalidPayload {
+            message: "The password must contain at least one alphabetic character (uppercase or lowercase), at least one digit, and must be at least 8 characters long.".to_string(),
         });
     }
 

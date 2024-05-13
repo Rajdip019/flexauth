@@ -6,6 +6,7 @@ use crate::{
         UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
         UserEmailResponse, UserIdPayload, UserResponse,
     },
+    utils::validation_utils::Validation,
     AppState,
 };
 use axum::{extract::State, Json};
@@ -34,6 +35,12 @@ pub async fn update_user_handler(
     if payload.email.is_empty() || payload.name.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
         });
     }
 
@@ -90,6 +97,12 @@ pub async fn update_user_role_handler(
     if payload.email.is_empty() || payload.role.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
         });
     }
 
@@ -150,9 +163,10 @@ pub async fn get_user_email_handler(
     payload: Json<UserEmailPayload>,
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_email_handler called");
-    if payload.email.is_empty() {
+
+    if !Validation::email(&payload.email) {
         return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
+            message: "Invalid Email".to_string(),
         });
     }
 
@@ -208,10 +222,9 @@ pub async fn delete_user_handler(
 ) -> Result<Json<UserEmailResponse>> {
     println!(">> HANDLER: delete_user_handler called");
 
-    // check if the payload is empty
-    if payload.email.is_empty() {
+    if !Validation::email(&payload.email) {
         return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
+            message: "Invalid Email".to_string(),
         });
     }
 
