@@ -15,6 +15,8 @@ pub enum Error {
     // -- User Errors
     UserNotFound { message: String },
     UserAlreadyExists { message: String },
+    WrongCredentials { message: String },
+    UserBlocked { message: String },
 
     // -- Password Errors
     InvalidPassword { message: String },
@@ -31,7 +33,10 @@ pub enum Error {
     SessionExpired { message: String },
     ActiveSessionExists { message: String },
 
-    
+    // -- Validation Errors
+    InvalidEmail { message: String },
+    InvalidUserAgent { message: String },
+
     // -- Encryption Errors
     KeyNotFound { message: String },
 
@@ -70,9 +75,26 @@ impl Error {
                 (StatusCode::FOUND, ClientError::USER_ALREADY_EXISTS)
             }
 
+            // -- Validation Errors
+            Self::InvalidEmail { message: _ } => {
+                (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
+            }
+
+            Self::InvalidUserAgent { message: _ } => {
+                (StatusCode::BAD_REQUEST, ClientError::INVALID_PARAMS)
+            }
+
             // -- Password Errors
             Self::InvalidPassword { message: _ } => {
                 (StatusCode::UNAUTHORIZED, ClientError::INVALID_PASSWORD)
+            }
+
+            Self::WrongCredentials { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::WRONG_CREDENTIALS)
+            }
+
+            Self::UserBlocked { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::USER_BLOCKED)
             }
 
             Self::KeyNotFound { message: _ } => (
@@ -117,21 +139,19 @@ impl Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
             ),
-            
-            Self::SessionExpired { message: _ } => (
-                StatusCode::UNAUTHORIZED,
-                ClientError::SESSION_EXPIRED,
-            ),
+
+            Self::SessionExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::SESSION_EXPIRED)
+            }
 
             Self::ServerError { message: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
             ),
 
-            Self::ActiveSessionExists { message: _ } => (
-                StatusCode::CONFLICT,
-                ClientError::ACTIVE_SESSION_EXISTS,
-            ),
+            Self::ActiveSessionExists { message: _ } => {
+                (StatusCode::CONFLICT, ClientError::ACTIVE_SESSION_EXISTS)
+            }
 
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -149,6 +169,8 @@ pub enum ClientError {
     SERVICE_ERROR,
     USER_ALREADY_EXISTS,
     INVALID_PASSWORD,
+    WRONG_CREDENTIALS,
+    USER_BLOCKED,
     RESET_PASSWORD_LINK_EXPIRED,
     INVALID_TOKEN,
     SIGNATURE_VERIFICATION_ERROR,

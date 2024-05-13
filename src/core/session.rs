@@ -3,8 +3,7 @@ use crate::{
     models::session_model::SessionResponse,
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
-        encryption_utils::Encryption,
-        session_utils::{IDToken, RefreshToken},
+        email_utils::Email, encryption_utils::Encryption, session_utils::{IDToken, RefreshToken}
     },
 };
 use bson::{doc, DateTime};
@@ -54,7 +53,7 @@ impl Session {
     }
 
     pub async fn encrypt_add(&self, mongo_client: &Client, key: &str) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         let encrypted_session = self.encrypt(key);
@@ -74,7 +73,7 @@ impl Session {
                 if !token_verify_result.1 {
                     return Ok(token_verify_result);
                 }
-                let db = mongo_client.database("test");
+                let db = mongo_client.database("auth");
                 let collection_session: Collection<Session> = db.collection("sessions");
 
                 let dek_data = match Dek::get(mongo_client, &token_verify_result.0.uid).await {
@@ -128,6 +127,7 @@ impl Session {
         session_id: &str,
         id_token: &str,
         refresh_token: &str,
+        user_agent: &str,
     ) -> Result<(String, String)> {
         // verify refresh token 
         match RefreshToken::verify(&refresh_token) {
@@ -142,7 +142,7 @@ impl Session {
         match Self::verify(&mongo_client, &id_token).await {
             Ok(token_verify_result) => {
                 if !token_verify_result.1 {
-                    let db = mongo_client.database("test");
+                    let db = mongo_client.database("auth");
                     let collection_session: Collection<Session> = db.collection("sessions");
 
                     let dek_data = match Dek::get(mongo_client, &token_verify_result.0.uid).await {
@@ -170,6 +170,26 @@ impl Session {
                             match session {
                                 Some(data) => {
                                     let decrypted_session = data.decrypt(&dek_data.dek);
+                                    if decrypted_session.user_agent != user_agent {
+                                        let user =  User::get_from_email(mongo_client, &decrypted_session.email).await.unwrap();
+                                        Email::new(
+                                            &user.name,
+                                             &user.email,
+                                              &"Unauthorized Login Attempt Detected",
+                                         "We have detected an unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                                            Immediately change your password to a strong, unique one.
+                                            Review your account activity for any suspicious activity.
+                                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                                            Stay safe and secure,
+                                            FlexAuth Team").send().await;
+                                         return Err(Error::InvalidUserAgent {
+                                            message: "User Agent doesn't match with it's Session's User Agent".to_string(),
+                                        })
+                                    }
                                     if decrypted_session.id_token == id_token
                                         && decrypted_session.refresh_token == refresh_token
                                     {
@@ -255,7 +275,7 @@ impl Session {
         mongo_client: &Client,
         uid: &str,
     ) -> Result<Vec<SessionResponse>> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         let dek_data = match Dek::get(mongo_client, uid).await {
@@ -307,7 +327,7 @@ impl Session {
     }
 
     pub async fn revoke_all(mongo_client: &Client, uid: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -322,7 +342,7 @@ impl Session {
     }
 
     pub async fn revoke(mongo_client: &Client, session_id: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -341,7 +361,7 @@ impl Session {
     }
 
     pub async fn delete(mongo_client: &Client, session_id: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -359,7 +379,7 @@ impl Session {
     }
 
     pub async fn delete_all(mongo_client: &Client, uid: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session

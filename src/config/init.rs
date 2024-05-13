@@ -1,6 +1,6 @@
 use mongodb::{Client, Collection};
 
-use crate::core::{user::User, dek::Dek};
+use crate::core::{dek::Dek, user::User};
 
 struct InitUser {
     name: String,
@@ -33,7 +33,7 @@ pub async fn init_users(mongo_client: Client) {
     ];
 
     // check if the users already exist
-    let db = mongo_client.database("test");
+    let db = mongo_client.database("auth");
     let collection: Collection<User> = db.collection("users");
     let cursor = collection.count_documents(None, None).await.unwrap();
 
@@ -48,7 +48,7 @@ pub async fn init_users(mongo_client: Client) {
         let new_user = User::new(&user.name, &user.email, &user.role, &user.password);
         let dek = Dek::generate();
         match new_user.encrypt_and_add(&mongo_client, &dek).await {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => {
                 println!(">> Error adding user: {:?}", e);
                 continue;
@@ -56,7 +56,10 @@ pub async fn init_users(mongo_client: Client) {
         };
 
         // add the dek to the deks collection
-        match Dek::new(&new_user.uid, &new_user.email, &dek).encrypt_and_add(&mongo_client).await {
+        match Dek::new(&new_user.uid, &new_user.email, &dek)
+            .encrypt_and_add(&mongo_client)
+            .await
+        {
             Ok(_) => {}
             Err(e) => {
                 println!(">> Error adding dek: {:?}", e);

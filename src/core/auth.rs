@@ -1,4 +1,4 @@
-use bson::doc;
+use bson::{doc, DateTime};
 use mongodb::{Client, Collection};
 
 use crate::{
@@ -17,10 +17,9 @@ impl Auth {
         email: &str,
         role: &str,
         password: &str,
+        user_agent: &str,
     ) -> Result<SignInOrSignUpResponse> {
-        println!(">> HANDLER: add_user_handler called");
-
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
 
         let collection: Collection<User> = db.collection("users");
         let cursor = collection
@@ -57,10 +56,13 @@ impl Auth {
             Err(e) => return Err(e),
         };
 
-        let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek).await {
-        Ok(session) => session,
-        Err(e) => return Err(e),
-    };
+        let session = match Session::new(&user, user_agent)
+            .encrypt_add(&mongo_client, &dek)
+            .await
+        {
+            Ok(session) => session,
+            Err(e) => return Err(e),
+        };
 
         Ok(SignInOrSignUpResponse {
             message: "Signup successful".to_string(),
@@ -84,11 +86,25 @@ impl Auth {
         mongo_client: &Client,
         email: &str,
         password: &str,
+        user_agent: &str,
     ) -> Result<SignInOrSignUpResponse> {
         let user = match User::get_from_email(&mongo_client, email).await {
             Ok(user) => user,
             Err(e) => return Err(e),
         };
+
+        // check if the user has a blocked_until date greater than the current date check in milliseconds from DateTime type
+        match user.blocked_until {
+            Some(blocked_until_time) => {
+                let current_time = DateTime::now().timestamp_millis();
+                if blocked_until_time.timestamp_millis() > current_time {
+                    return Err(Error::UserBlocked {
+                        message: "User is blocked".to_string(),
+                    });
+                }
+            }
+            None => {}
+        }
 
         let dek_data = match Dek::get(&mongo_client, &user.uid).await {
             Ok(dek_data) => dek_data,
@@ -97,28 +113,19 @@ impl Auth {
 
         // verify the password
         if Password::verify_hash(password, &user.password) {
-            let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek_data.dek).await {
-            Ok(session) => session,
-            Err(e) => return Err(e),
-        };
-            // let res = Json(json!({
-            //     "message": "Signin successful",
-            //     "user": {
-            //         "uid": user.uid,
-            //         "name": user.name,
-            //         "email": user.email,
-            //         "role": user.role,
-            //         "created_at": user.created_at,
-            //         "updated_at": user.updated_at,
-            //         "email_verified": user.email_verified,
-            //         "is_active": user.is_active,
-            //         "session": {
-            //             "session_id": Encryption::encrypt_data(&session.session_id, &dek_data.dek),
-            //             "id_token" : session.id_token,
-            //             "refresh_token" : session.refresh_token,
-            //         },
-            //     },
-            // }));
+            let session = match Session::new(&user, &user_agent)
+                .encrypt_add(&mongo_client, &dek_data.dek)
+                .await
+            {
+                Ok(session) => session,
+                Err(e) => return Err(e),
+            };
+
+            // make the failed login attempts to 0
+            match User::reset_failed_login_attempt(&mongo_client, &user.email).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
 
             let res = SignInOrSignUpResponse {
                 message: "Signin successful".to_string(),
@@ -139,8 +146,12 @@ impl Auth {
 
             Ok(res)
         } else {
-            Err(Error::UserNotFound {
-                message: "User not found".to_string(),
+            match User::increase_failed_login_attempt(&mongo_client, &user.email).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+            Err(Error::WrongCredentials {
+                message: "Invalid credentials".to_string(),
             })
         }
     }
