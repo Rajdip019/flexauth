@@ -54,7 +54,7 @@ impl Session {
     }
 
     pub async fn encrypt_add(&self, mongo_client: &Client, key: &str) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         let encrypted_session = self.encrypt(key);
@@ -74,7 +74,7 @@ impl Session {
                 if !token_verify_result.1 {
                     return Ok(token_verify_result);
                 }
-                let db = mongo_client.database("test");
+                let db = mongo_client.database("auth");
                 let collection_session: Collection<Session> = db.collection("sessions");
 
                 let dek_data = match Dek::get(mongo_client, &token_verify_result.0.uid).await {
@@ -142,7 +142,7 @@ impl Session {
         match Self::verify(&mongo_client, &id_token).await {
             Ok(token_verify_result) => {
                 if !token_verify_result.1 {
-                    let db = mongo_client.database("test");
+                    let db = mongo_client.database("auth");
                     let collection_session: Collection<Session> = db.collection("sessions");
 
                     let dek_data = match Dek::get(mongo_client, &token_verify_result.0.uid).await {
@@ -255,7 +255,7 @@ impl Session {
         mongo_client: &Client,
         uid: &str,
     ) -> Result<Vec<SessionResponse>> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         let dek_data = match Dek::get(mongo_client, uid).await {
@@ -307,7 +307,7 @@ impl Session {
     }
 
     pub async fn revoke_all(mongo_client: &Client, uid: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -322,7 +322,7 @@ impl Session {
     }
 
     pub async fn revoke(mongo_client: &Client, session_id: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -341,7 +341,7 @@ impl Session {
     }
 
     pub async fn delete(mongo_client: &Client, session_id: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
@@ -359,7 +359,7 @@ impl Session {
     }
 
     pub async fn delete_all(mongo_client: &Client, uid: &str) -> Result<()> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session

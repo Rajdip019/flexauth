@@ -37,7 +37,7 @@ pub async fn update_user_handler(
         });
     }
 
-    let db = state.mongo_client.database("test");
+    let db = state.mongo_client.database("auth");
     let collection: Collection<User> = db.collection("users");
     let dek_data = match Dek::get(&state.mongo_client, &payload.email).await {
         Ok(dek) => dek,

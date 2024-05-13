@@ -50,7 +50,7 @@ impl User {
     }
 
     pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let mut user = self.clone();
         user.password = Password::salt_and_hash(user.password.as_str());
         let collection: Collection<User> = db.collection("users");
@@ -66,7 +66,7 @@ impl User {
 
     pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<User> {
                 let user_collection: Collection<User> =
-                    mongo_client.database("test").collection("users");
+                    mongo_client.database("auth").collection("users");
                 let dek_data = match Dek::get(&mongo_client, email).await {
                     Ok(dek) => dek,
                     Err(e) => {
@@ -99,7 +99,7 @@ impl User {
     }
 
     pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<User> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, uid).await {
             Ok(dek) => dek,
@@ -131,7 +131,7 @@ impl User {
     }
 
     pub async fn get_all(mongo_client: &Client) -> Result<Vec<UserResponse>> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
@@ -196,7 +196,7 @@ impl User {
         email: &str,
         role: &str,
     ) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
 
         let dek_data = match Dek::get(&mongo_client, email).await {
@@ -247,7 +247,7 @@ impl User {
         email: &str,
         is_active: &bool,
     ) -> Result<bool> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -296,7 +296,7 @@ impl User {
         mongo_client: &Client,
         email: &str,
     ) -> Result<i32> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -436,7 +436,7 @@ impl User {
         mongo_client: &Client,
         email: &str,
     ) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -482,7 +482,7 @@ impl User {
     }
 
     pub async fn change_password(mongo_client: &Client, email: &str, old_password: &str, new_password: &str) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -548,7 +548,7 @@ impl User {
 
     pub async fn forget_password_request(mongo_client: &Client, email: &str) -> Result<String> {
         // check if the user exists
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let dek_data = match Dek::get(&mongo_client, &email).await {
             Ok(dek) => dek,
             Err(e) => return Err(e),
@@ -595,7 +595,7 @@ impl User {
         email: &str,
         new_password: &str
     ) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let user_collection: Collection<User> = db.collection("users");
         let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
             db.collection("forget_password_requests");
@@ -690,7 +690,7 @@ impl User {
     }
 
     pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
