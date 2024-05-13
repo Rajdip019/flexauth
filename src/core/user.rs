@@ -13,7 +13,7 @@ use futures::StreamExt;
 use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
 
-use super::dek::Dek;
+use super::{dek::Dek, session::Session};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct User {
@@ -25,6 +25,8 @@ pub struct User {
     pub password: String,
     pub email_verified: bool,
     pub is_active: bool,
+    pub failed_login_attempts: i32,
+    pub blocked_until: Option<DateTime>,
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
 }
@@ -40,13 +42,15 @@ impl User {
             password: password.to_string(),
             email_verified: false,
             is_active: true,
+            failed_login_attempts: 0,
+            blocked_until: None,
             created_at: Some(DateTime::now()),
             updated_at: Some(DateTime::now()),
         }
     }
 
     pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let mut user = self.clone();
         user.password = Password::salt_and_hash(user.password.as_str());
         let collection: Collection<User> = db.collection("users");
@@ -62,7 +66,7 @@ impl User {
 
     pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<User> {
                 let user_collection: Collection<User> =
-                    mongo_client.database("test").collection("users");
+                    mongo_client.database("auth").collection("users");
                 let dek_data = match Dek::get(&mongo_client, email).await {
                     Ok(dek) => dek,
                     Err(e) => {
@@ -95,7 +99,7 @@ impl User {
     }
 
     pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<User> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, uid).await {
             Ok(dek) => dek,
@@ -103,7 +107,6 @@ impl User {
                 return Err(e);
             }
         };
-
         match collection
             .find_one(
                 doc! {
@@ -114,7 +117,9 @@ impl User {
             .await
         {
             Ok(Some(user)) => {
+                println!("User {:?}", user);
                 let decrypted_user = user.decrypt(&dek_data.dek);
+                println!("Decrypted User {:?}", decrypted_user);
                 return Ok(decrypted_user);
             }
             Ok(None) => Err(Error::UserNotFound {
@@ -127,7 +132,7 @@ impl User {
     }
 
     pub async fn get_all(mongo_client: &Client) -> Result<Vec<UserResponse>> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
@@ -192,7 +197,7 @@ impl User {
         email: &str,
         role: &str,
     ) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
 
         let dek_data = match Dek::get(&mongo_client, email).await {
@@ -243,7 +248,7 @@ impl User {
         email: &str,
         is_active: &bool,
     ) -> Result<bool> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -288,8 +293,251 @@ impl User {
         }
     }
 
+    pub async fn increase_failed_login_attempt(
+        mongo_client: &Client,
+        email: &str,
+    ) -> Result<i32> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<User> = db.collection("users");
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // find the user in the users collection using the uid
+        match collection
+            .update_one(
+                doc! {
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                },
+                doc! {
+                    "$inc": {
+                        "failed_login_attempts": 1
+                    },
+                    "$set": {
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+        {
+            Ok(cursor) => {
+                let modified_count = cursor.modified_count;
+
+                // Return Error if User is not there
+                if modified_count == 0 {
+                    // send back a 404 to
+                    return Err(Error::UserNotFound {
+                        message: "User not found".to_string(),
+                    });
+                }
+
+                // check if the failed login attempts is greater than 5 then add_block_user_until 180 seconds and if it is 10 then for 10 minutes if its 15 then 1hr
+                let user = match User::get_from_email(&mongo_client, email).await {
+                    Ok(user) => user,
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+
+                if user.failed_login_attempts == 5 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 180000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(5);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else if user.failed_login_attempts == 10 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 600000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(10);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else if user.failed_login_attempts == 15 {
+                    let blocked_until = DateTime::now().timestamp_millis() + 3600000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
+                    match collection
+                        .update_one(
+                            doc! {
+                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            },
+                            doc! {
+                                "$set": {
+                                    "blocked_until": DateTime::from_millis(blocked_until),
+                                    "updated_at": DateTime::now(),
+                                }
+                            },
+                            None,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            return Ok(15);
+                        }
+                        Err(_) => {
+                            return Err(Error::ServerError {
+                                message: "Failed to update User".to_string(),
+                            });
+                        }
+                    }
+                } else {
+                    return Ok(user.failed_login_attempts);
+                }
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to update User".to_string(),
+                })
+            }
+        }
+    }
+
+    pub async fn reset_failed_login_attempt(
+        mongo_client: &Client,
+        email: &str,
+    ) -> Result<String> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<User> = db.collection("users");
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // find the user in the users collection using the uid
+        match collection
+            .update_one(
+                doc! {
+                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                },
+                doc! {
+                    "$set": {
+                        "failed_login_attempts": 0,
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+        {
+            Ok(cursor) => {
+                let modified_count = cursor.modified_count;
+
+                // Return Error if User is not there
+                if modified_count == 0 {
+                    // send back a 404 to
+                    return Err(Error::UserNotFound {
+                        message: "User not found".to_string(),
+                    });
+                }
+                return Ok("Failed login attempts reset".to_string());
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to update User".to_string(),
+                })
+            }
+        }
+    }
+
     pub async fn change_password(mongo_client: &Client, email: &str, old_password: &str, new_password: &str) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
             Ok(dek) => dek,
@@ -355,7 +603,7 @@ impl User {
 
     pub async fn forget_password_request(mongo_client: &Client, email: &str) -> Result<String> {
         // check if the user exists
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let dek_data = match Dek::get(&mongo_client, &email).await {
             Ok(dek) => dek,
             Err(e) => return Err(e),
@@ -402,7 +650,7 @@ impl User {
         email: &str,
         new_password: &str
     ) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let user_collection: Collection<User> = db.collection("users");
         let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
             db.collection("forget_password_requests");
@@ -497,7 +745,7 @@ impl User {
     }
 
     pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
@@ -538,6 +786,18 @@ impl User {
                     .await
                 {
                     Ok(cursor_dek) => {
+                        // delete all sessions associated with the user
+                        let session_collection: Collection<Session> = db.collection("sessions");
+                        session_collection
+                            .delete_many(
+                                doc! {
+                                    "uid": Encryption::encrypt_data(&dek_data.uid, &kek),
+                                },
+                                None,
+                            )
+                            .await
+                            .unwrap();
+                        
                         if cursor_dek.deleted_count == 0 {
                             // send back a 404 to
                             return Err(Error::UserNotFound {

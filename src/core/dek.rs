@@ -57,7 +57,7 @@ impl Dek {
     }
     
     pub async fn encrypt_and_add(&self, mongo_client: &Client) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
         let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
@@ -73,7 +73,7 @@ impl Dek {
     }
 
     pub async fn get(mongo_client: &Client, identifier: &str) -> Result<Self> {
-        let db = mongo_client.database("test");
+        let db = mongo_client.database("auth");
         let collection_dek: Collection<Dek> = db.collection("deks");
 
         let server_kek = env::var("SERVER_KEK").expect("Server Kek must be set.");

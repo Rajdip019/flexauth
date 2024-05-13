@@ -8,8 +8,17 @@ impl Validation {
     }
 
     pub fn password(password: &str) -> bool {
-        // Check if password is valid
-        let re = regex::Regex::new(r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$").unwrap();
-        re.is_match(password)
+        let mut has_alpha = false;
+        let mut has_digit = false;
+
+        for c in password.chars() {
+            if c.is_ascii_alphabetic() {
+                has_alpha = true;
+            } else if c.is_ascii_digit() {
+                has_digit = true;
+            }
+        }
+
+        has_alpha && has_digit && password.len() >= 8
     }
 }

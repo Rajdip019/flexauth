@@ -7,6 +7,7 @@
         "chrono",
         "deks",
         "dotenv",
+        "inhouse",
         "jsonwebtoken",
         "lettre",
         "signin",

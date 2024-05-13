@@ -6,7 +6,7 @@ use crate::{
         UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
         UserEmailResponse, UserIdPayload, UserResponse,
     },
-    utils::validation_utils::Validation,
+    utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
 };
 use axum::{extract::State, Json};
@@ -44,18 +44,22 @@ pub async fn update_user_handler(
         });
     }
 
-    let db = state.mongo_client.database("test");
+    let db = state.mongo_client.database("auth");
     let collection: Collection<User> = db.collection("users");
     let dek_data = match Dek::get(&state.mongo_client, &payload.email).await {
         Ok(dek) => dek,
         Err(e) => return Err(e),
     };
 
+    // let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+    println!(">> DEK DATA Decrypted: {:?}", dek_data);
+
     // find the user in the users collection using the uid
     match collection
         .update_one(
             doc! {
-                "uid": dek_data.uid,
+                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
             },
             doc! {
                 "$set": {
