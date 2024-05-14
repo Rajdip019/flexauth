@@ -25,13 +25,16 @@
 Need some features you think might be helpful for others? Raise a PR and we will surely try to bring it live. 
 
 ## Local Setup:
-Here is a documentation for if you want to setup this repo locally - [Local Setup Doc]()
+Here is a documentation for if you want to setup this repo locally - [Local Setup Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/local-setup/readme.md)
+
+## API Documentation:
+Here is the API documentation - [API Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/api/readme.md)
 
 ## Backend Documentation:
 Link to backend docs - [Backend Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/backend)
 
 ## Folder Structure and others:
-Link to general docs for this repository - [General Docs]()
+Link to general docs for this repository - [General Docs](https://github.com/Rajdip019/flexauth/tree/main/docs/folder-structure/readme.md)
 
 **Code of Conduct:**
 
@@ -39,10 +42,10 @@ Please note that we have a code of conduct in place to ensure a welcoming and in
 
 **Get Started:**
 
-Ready to start contributing to Freeflow? Head over to our GitHub repository and fork the project today!
+Ready to start contributing to FlexAuth? Head over to our GitHub repository and fork the project today!
 
 
-[GitHub Repository Link](https://github.com/Rajdip019/freeflow)
+[GitHub Repository Link](https://github.com/Rajdip019/flexAuth)
 
 We look forward to your contributions and thank you for helping us make Freeflow the best platform for designers and teams!
 
