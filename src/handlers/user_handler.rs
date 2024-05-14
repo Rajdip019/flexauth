@@ -50,7 +50,6 @@ pub async fn update_user_handler(
         Ok(dek) => dek,
         Err(e) => return Err(e),
     };
-
     // find the user in the users collection using the uid
     match collection
         .update_one(
