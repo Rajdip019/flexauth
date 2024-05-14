@@ -39,7 +39,6 @@ pub struct UpdateUserPayload {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateUserResponse {
-    pub message: String,
     pub email: String,
     pub name: String,
 }
