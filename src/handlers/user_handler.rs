@@ -51,8 +51,6 @@ pub async fn update_user_handler(
         Err(e) => return Err(e),
     };
 
-    println!(">> DEK DATA Decrypted: {:?}", dek_data);
-
     // find the user in the users collection using the uid
     match collection
         .update_one(
@@ -61,7 +59,7 @@ pub async fn update_user_handler(
             },
             doc! {
                 "$set": {
-                    "name": payload.name.clone(),
+                    "name": Encryption::encrypt_data(&payload.name, &dek_data.dek),
                     "updated_at": DateTime::now(),
                 }
             },
@@ -76,7 +74,6 @@ pub async fn update_user_handler(
                 });
             }
             Ok(Json(UpdateUserResponse {
-                message: "User updated".to_string(),
                 email: payload.email.to_owned(),
                 name: payload.name.to_owned(),
             }))
