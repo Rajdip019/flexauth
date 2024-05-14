@@ -47,7 +47,7 @@ Ready to start contributing to FlexAuth? Head over to our GitHub repository and 
 
 [GitHub Repository Link](https://github.com/Rajdip019/flexAuth)
 
-We look forward to your contributions and thank you for helping us make Freeflow the best platform for designers and teams!
+We look forward to your contributions and thank you for helping us make FlexAuth the best platform for designers and teams!
 
 
 <h2 align='center'> Project maintainers </h2>
