@@ -1,4 +1,8 @@
-use axum::{extract::State, http::{header, HeaderMap}, Json};
+use axum::{
+    extract::State,
+    http::{header, HeaderMap},
+    Json,
+};
 use axum_macros::debug_handler;
 
 use crate::{
@@ -8,12 +12,14 @@ use crate::{
         auth_model::{SignInOrSignUpResponse, SignInPayload, SignUpPayload},
         session_model::{RevokeSessionsPayload, RevokeSessionsResult},
     },
+    utils::validation_utils::Validation,
     AppState,
 };
 
 #[debug_handler]
 pub async fn signup_handler(
     State(state): State<AppState>,
+    header: HeaderMap,
     payload: Json<SignUpPayload>,
 ) -> Result<Json<SignInOrSignUpResponse>> {
     println!(">> HANDLER: signup_handler called");
@@ -29,12 +35,37 @@ pub async fn signup_handler(
         });
     }
 
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidEmail {
+            message: "Invalid Email".to_string(),
+        });
+    }
+
+    if !Validation::password(&payload.password) {
+        return Err(Error::InvalidPassword {
+            message: "The password must contain at least one alphabetic character (uppercase or lowercase), at least one digit, and must be at least 8 characters long.".to_string(),
+        });
+    }
+
+    // get user-agent form the header
+    let user_agent = match header.get(header::USER_AGENT) {
+        Some(ua) => ua.to_str().unwrap().to_string(),
+        None => "".to_string(),
+    };
+
+    if user_agent.is_empty() {
+        return Err(Error::InvalidUserAgent {
+            message: "Invalid User Agent, Can't let random user to signin".to_string(),
+        });
+    }
+
     match Auth::sign_up(
         &state.mongo_client,
         &payload.name,
         &payload.email,
         &payload.role,
         &payload.password,
+        &user_agent,
     )
     .await
     {
@@ -56,13 +87,32 @@ pub async fn signin_handler(
         });
     }
 
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidEmail {
+            message: "Invalid Email".to_string(),
+        });
+    }
+
     // get user-agent form the header
     let user_agent = match header.get(header::USER_AGENT) {
         Some(ua) => ua.to_str().unwrap().to_string(),
         None => "".to_string(),
     };
 
-    match Auth::sign_in(&state.mongo_client, &payload.email, &payload.password, &user_agent).await {
+    if user_agent.is_empty() {
+        return Err(Error::InvalidUserAgent {
+            message: "Invalid User Agent, Can't let random user to signin".to_string(),
+        });
+    }
+
+    match Auth::sign_in(
+        &state.mongo_client,
+        &payload.email,
+        &payload.password,
+        &user_agent,
+    )
+    .await
+    {
         Ok(res) => Ok(Json(res)),
         Err(e) => Err(e),
     }

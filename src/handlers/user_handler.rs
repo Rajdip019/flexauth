@@ -6,6 +6,7 @@ use crate::{
         UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
         UserEmailResponse, UserIdPayload, UserResponse,
     },
+    utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
 };
 use axum::{extract::State, Json};
@@ -37,6 +38,12 @@ pub async fn update_user_handler(
         });
     }
 
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
+        });
+    }
+
     let db = state.mongo_client.database("auth");
     let collection: Collection<User> = db.collection("users");
     let dek_data = match Dek::get(&state.mongo_client, &payload.email).await {
@@ -44,11 +51,15 @@ pub async fn update_user_handler(
         Err(e) => return Err(e),
     };
 
+    // let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+    println!(">> DEK DATA Decrypted: {:?}", dek_data);
+
     // find the user in the users collection using the uid
     match collection
         .update_one(
             doc! {
-                "uid": dek_data.uid,
+                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
             },
             doc! {
                 "$set": {
@@ -90,6 +101,12 @@ pub async fn update_user_role_handler(
     if payload.email.is_empty() || payload.role.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload".to_string(),
+        });
+    }
+
+    if !Validation::email(&payload.email) {
+        return Err(Error::InvalidPayload {
+            message: "Invalid Email".to_string(),
         });
     }
 
@@ -150,9 +167,10 @@ pub async fn get_user_email_handler(
     payload: Json<UserEmailPayload>,
 ) -> Result<Json<UserResponse>> {
     println!(">> HANDLER: get_user_by_email_handler called");
-    if payload.email.is_empty() {
+
+    if !Validation::email(&payload.email) {
         return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
+            message: "Invalid Email".to_string(),
         });
     }
 
@@ -208,10 +226,9 @@ pub async fn delete_user_handler(
 ) -> Result<Json<UserEmailResponse>> {
     println!(">> HANDLER: delete_user_handler called");
 
-    // check if the payload is empty
-    if payload.email.is_empty() {
+    if !Validation::email(&payload.email) {
         return Err(Error::InvalidPayload {
-            message: "Invalid payload".to_string(),
+            message: "Invalid Email".to_string(),
         });
     }
 
