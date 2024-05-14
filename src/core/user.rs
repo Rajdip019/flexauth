@@ -117,9 +117,7 @@ impl User {
             .await
         {
             Ok(Some(user)) => {
-                println!("User {:?}", user);
                 let decrypted_user = user.decrypt(&dek_data.dek);
-                println!("Decrypted User {:?}", decrypted_user);
                 return Ok(decrypted_user);
             }
             Ok(None) => Err(Error::UserNotFound {
