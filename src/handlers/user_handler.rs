@@ -51,8 +51,6 @@ pub async fn update_user_handler(
         Err(e) => return Err(e),
     };
 
-    // let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
-
     println!(">> DEK DATA Decrypted: {:?}", dek_data);
 
     // find the user in the users collection using the uid
