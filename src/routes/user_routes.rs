@@ -18,7 +18,10 @@ pub fn routes(State(state): State<AppState>) -> Router {
         .route("/get-from-email", post(get_user_email_handler))
         .route("/get-from-id", post(get_user_id_handler))
         .route("/update", post(update_user_handler))
-        .route("/toggle-account-active-status", post(toggle_user_activation_status))
+        .route(
+            "/toggle-account-active-status",
+            post(toggle_user_activation_status),
+        )
         .route("/update-role", post(update_user_role_handler))
         .route("/delete", post(delete_user_handler));
 

@@ -13,7 +13,7 @@ use futures::StreamExt;
 use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
 
-use super::dek::Dek;
+use super::{dek::Dek, session::Session};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct User {
@@ -107,7 +107,6 @@ impl User {
                 return Err(e);
             }
         };
-
         match collection
             .find_one(
                 doc! {
@@ -118,7 +117,9 @@ impl User {
             .await
         {
             Ok(Some(user)) => {
+                println!("User {:?}", user);
                 let decrypted_user = user.decrypt(&dek_data.dek);
+                println!("Decrypted User {:?}", decrypted_user);
                 return Ok(decrypted_user);
             }
             Ok(None) => Err(Error::UserNotFound {
@@ -344,6 +345,24 @@ impl User {
 
                 if user.failed_login_attempts == 5 {
                     let blocked_until = DateTime::now().timestamp_millis() + 180000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
                     match collection
                         .update_one(
                             doc! {
@@ -370,6 +389,24 @@ impl User {
                     }
                 } else if user.failed_login_attempts == 10 {
                     let blocked_until = DateTime::now().timestamp_millis() + 600000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
                     match collection
                         .update_one(
                             doc! {
@@ -396,6 +433,24 @@ impl User {
                     }
                 } else if user.failed_login_attempts == 15 {
                     let blocked_until = DateTime::now().timestamp_millis() + 3600000;
+
+                    // send a email to the user to notify multiple login attempts detected
+                    Email::new(
+                        &user.name,
+                        &user.email,
+                        &"Multiple login Attempts detected",
+                        &("We have detected an multiple unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                            Immediately change your password to a strong, unique one.
+                            Review your account activity for any suspicious activity.
+                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                            Stay safe and secure,
+                            FlexAuth Team"),
+                    ).send().await;
+
                     match collection
                         .update_one(
                             doc! {
@@ -731,6 +786,18 @@ impl User {
                     .await
                 {
                     Ok(cursor_dek) => {
+                        // delete all sessions associated with the user
+                        let session_collection: Collection<Session> = db.collection("sessions");
+                        session_collection
+                            .delete_many(
+                                doc! {
+                                    "uid": Encryption::encrypt_data(&dek_data.uid, &kek),
+                                },
+                                None,
+                            )
+                            .await
+                            .unwrap();
+                        
                         if cursor_dek.deleted_count == 0 {
                             // send back a 404 to
                             return Err(Error::UserNotFound {

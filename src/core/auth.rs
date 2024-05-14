@@ -17,9 +17,8 @@ impl Auth {
         email: &str,
         role: &str,
         password: &str,
+        user_agent: &str,
     ) -> Result<SignInOrSignUpResponse> {
-        println!(">> HANDLER: add_user_handler called");
-
         let db = mongo_client.database("auth");
 
         let collection: Collection<User> = db.collection("users");
@@ -57,10 +56,13 @@ impl Auth {
             Err(e) => return Err(e),
         };
 
-        let session = match Session::new(&user, "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36").encrypt_add(&mongo_client, &dek).await {
-        Ok(session) => session,
-        Err(e) => return Err(e),
-    };
+        let session = match Session::new(&user, user_agent)
+            .encrypt_add(&mongo_client, &dek)
+            .await
+        {
+            Ok(session) => session,
+            Err(e) => return Err(e),
+        };
 
         Ok(SignInOrSignUpResponse {
             message: "Signup successful".to_string(),
@@ -111,10 +113,13 @@ impl Auth {
 
         // verify the password
         if Password::verify_hash(password, &user.password) {
-            let session = match Session::new(&user, &user_agent).encrypt_add(&mongo_client, &dek_data.dek).await {
-            Ok(session) => session,
-            Err(e) => return Err(e),
-        };
+            let session = match Session::new(&user, &user_agent)
+                .encrypt_add(&mongo_client, &dek_data.dek)
+                .await
+            {
+                Ok(session) => session,
+                Err(e) => return Err(e),
+            };
 
             // make the failed login attempts to 0
             match User::reset_failed_login_attempt(&mongo_client, &user.email).await {

@@ -3,8 +3,7 @@ use crate::{
     models::session_model::SessionResponse,
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
-        encryption_utils::Encryption,
-        session_utils::{IDToken, RefreshToken},
+        email_utils::Email, encryption_utils::Encryption, session_utils::{IDToken, RefreshToken}
     },
 };
 use bson::{doc, DateTime};
@@ -128,6 +127,7 @@ impl Session {
         session_id: &str,
         id_token: &str,
         refresh_token: &str,
+        user_agent: &str,
     ) -> Result<(String, String)> {
         // verify refresh token 
         match RefreshToken::verify(&refresh_token) {
@@ -170,6 +170,26 @@ impl Session {
                             match session {
                                 Some(data) => {
                                     let decrypted_session = data.decrypt(&dek_data.dek);
+                                    if decrypted_session.user_agent != user_agent {
+                                        let user =  User::get_from_email(mongo_client, &decrypted_session.email).await.unwrap();
+                                        Email::new(
+                                            &user.name,
+                                             &user.email,
+                                              &"Unauthorized Login Attempt Detected",
+                                         "We have detected an unauthorized login attempt associated with your account. For your security, we have taken action to protect your account.
+
+                                            If you attempted to log in, please disregard this message. However, if you did not attempt to log in, we recommend taking the following steps:
+
+                                            Immediately change your password to a strong, unique one.
+                                            Review your account activity for any suspicious activity.
+                                            If you have any concerns or questions, please don't hesitate to contact our support team.
+
+                                            Stay safe and secure,
+                                            FlexAuth Team").send().await;
+                                         return Err(Error::InvalidUserAgent {
+                                            message: "User Agent doesn't match with it's Session's User Agent".to_string(),
+                                        })
+                                    }
                                     if decrypted_session.id_token == id_token
                                         && decrypted_session.refresh_token == refresh_token
                                     {
