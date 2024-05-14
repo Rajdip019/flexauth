@@ -32,6 +32,12 @@ impl Validation {
             return false;
         }
 
+        // Check for at least one special character
+        let has_special = password.chars().any(|c| c.is_ascii_punctuation());
+        if !has_special {
+            return false;
+        }
+
         // No whitespace allowed
         if password.contains(' ') {
             return false;
