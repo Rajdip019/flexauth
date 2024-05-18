@@ -31,7 +31,7 @@ Need some features you think might be helpful for others? Raise a PR and we will
 Here is a documentation for if you want to setup this repo locally - [Local Setup Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/local-setup/readme.md)
 
 ## API Documentation:
-Here is the API documentation - [API Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/api/readme.md)
+Here is the API documentation - [API Doc](https://documenter.getpostman.com/view/18827552/2sA3JT4Jmd#d47f6b6b-3e50-49f1-90e1-c206f8e08957)
 
 ## Backend Documentation:
 Link to backend docs - [Backend Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/backend)
