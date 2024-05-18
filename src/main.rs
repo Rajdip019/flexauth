@@ -1,6 +1,7 @@
 use axum::{extract::State, middleware, routing::get, Router};
 use dotenv::dotenv;
 use middlewares::res_log::main_response_mapper;
+use middlewares::with_api_key::with_api_key;
 use mongodb::Client;
 use std::error::Error;
 
@@ -35,7 +36,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
         .merge(routes::session_routes::routes(State(app_state.clone())))
-        .layer(middleware::map_response(main_response_mapper));
+        .layer(middleware::map_response(main_response_mapper))
+        .layer(middleware::from_fn(with_api_key));
 
     let app = Router::new().nest("/api", routes);
 
