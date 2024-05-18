@@ -26,7 +26,7 @@ SMTP servers require authentication to ensure that only authorized users can sen
 
 Also we need a Private Key for verifying Sessions (Make sure you have openssl in your system) and place it at the root of the project.
 ```
-openssl genpkey -algorithm RSA -out private_key.pem -aes256 -pass pass:your_passphrase -pkeyopt rsa_keygen_bits:2048
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
 
 ```
 
