@@ -25,7 +25,7 @@ You have to add a random Access Key `X_API_KEY` for secure authentication of the
 Alternatively you can use this command to generate a random `API KEY`
 
 ```shell
-gpg --gen-random --armor 1 18
+openssl rand -hex 32
 ```
 
 Also we need a Private Key for verifying Sessions (Make sure you have openssl in your system) and place it at the root of the project.
