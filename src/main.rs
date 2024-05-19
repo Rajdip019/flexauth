@@ -1,4 +1,7 @@
-use axum::{extract::State, middleware, routing::get, Router};
+use axum::extract::State;
+use axum::response::Html;
+use axum::routing::get;
+use axum::{middleware, Router};
 use dotenv::dotenv;
 use middlewares::res_log::main_response_mapper;
 use middlewares::with_api_key::with_api_key;
@@ -28,10 +31,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     config::init::init_users(mongo_client.clone()).await;
 
     let app_state = AppState { mongo_client };
-    // run the server
-    let routes = Router::new()
-        .route("/", get(root_handler))
-        .merge(routes::health_check_routes::routes())
+    // Define routes where middleware is applied
+    let protected_routes = Router::new()
         .merge(routes::auth_routes::routes(State(app_state.clone())))
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
@@ -39,7 +40,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .layer(middleware::map_response(main_response_mapper))
         .layer(middleware::from_fn(with_api_key));
 
-    let app = Router::new().nest("/api", routes);
+    // Define routes where middleware is not applied
+    let public_routes = Router::new().route("/", get(root_handler));
+
+    // Combine public and protected routes
+    let app = Router::new()
+        .nest("/api", protected_routes)
+        .nest("/", public_routes);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve::serve(listener, app.into_make_service())
@@ -48,6 +55,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn root_handler() -> &'static str {
-    "Hello, welcome to in-house auth service!"
+async fn root_handler() -> Html<&'static str> {
+    let html_content = r#"
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>FlexAuth</title>
+            </head>
+            <body>
+                <h1>Welcome to FlexAuth</h1>
+                <p>Your own flexible, blazingly fast 🦀, and secure in-house authentication system.</p>
+                <p>Here's the <a href="https://documenter.getpostman.com/view/18827552/2sA3JT4Jmd">API documentation</a>.</p>
+            </body>
+        </html>
+    "#;
+    Html(html_content)
 }
