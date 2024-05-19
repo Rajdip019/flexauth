@@ -37,12 +37,13 @@ openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:204
 
 ### Step 3: Spinning up Docker Containers
 
-Not it's time to run the docker container by running this following command (Make sure you have Docker installed)
+Now it's time to run the docker container by running this following command (Make sure you have Docker installed)
 
 ```
 docker compose up
 
 ```
+This command will start the container and watch the /src folder for any changes. If there are any modifications to the content inside /src, the container will automatically hot reload to reflect those changes.
 
 Note:- If there's any changes outside of the `/src` directory like- `cargo.toml` file, Make sure to stop the container and run the docker container with `--build` flag
 
@@ -50,5 +51,28 @@ Note:- If there's any changes outside of the `/src` directory like- `cargo.toml`
 docker compose up --build
 
 ```
+
+### Step 4: Connecting to MongoDB Compass
+
+After running the Docker containers, you can connect to the MongoDB database using MongoDB Compass. Follow these steps:
+
+1. **Open MongoDB Compass**: Launch MongoDB Compass on your system.
+
+2. **Connect to a MongoDB Deployment**:
+   - Click on the "New Connection" button to create a new connection.
+   - In the "Connection String" field, paste the following URI:
+     ```plaintext
+     mongodb://admin:admin@localhost:27017/?directConnection=true&retryWrites=true&w=majority
+     ```
+   - Replace the default URI with the one appropriate for your setup if necessary. This URI includes the credentials (`admin:admin`) and the default MongoDB port (`27017`).
+   
+3. **Connect to the Database**:
+   - Click on the "Connect" button to establish a connection to the MongoDB deployment.
+   - If the connection is successful, you will be able to browse and interact with the databases and collections in your MongoDB instance using MongoDB Compass.
+
+4. **Explore Data**: You can now explore your MongoDB databases, collections, and documents, run queries, and perform other operations using MongoDB Compass.
+
+That's it! You are now connected to your MongoDB database using MongoDB Compass.
+
 
 Congrats, Your Local Setup is done successfully.
