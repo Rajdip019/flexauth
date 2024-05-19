@@ -1,5 +1,6 @@
 <h1 align='center'>Flexauth</h1>
 <h2 align='center'> <b>Your own flexible, blazingly fast 🦀, and secure in-house authentication system.</b><h2>
+
 <div align="center">
  <p>
    
@@ -20,6 +21,8 @@
  </div>
 
  ## Introduction
+
+ ![Flexauth Twitter Post](https://github.com/Rajdip019/flexauth/assets/91758830/1f4c9b68-b931-4c89-a17e-03bbc5983dd3)
  Flexauth is a flexible, blazingly fast 🦀, and secure auth system that you can use for your project/company* . Need to add a specific feature as you need? Change the code as you like and deploy it on your servers. Here is the most flexible auth system for all your needs. 
 
 Need some features you think might be helpful for others? Raise a PR and we will surely try to bring it live. 
@@ -28,7 +31,7 @@ Need some features you think might be helpful for others? Raise a PR and we will
 Here is a documentation for if you want to setup this repo locally - [Local Setup Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/local-setup/readme.md)
 
 ## API Documentation:
-Here is the API documentation - [API Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/api/readme.md)
+Here is the API documentation - [API Doc](https://documenter.getpostman.com/view/18827552/2sA3JT4Jmd#d47f6b6b-3e50-49f1-90e1-c206f8e08957)
 
 ## Backend Documentation:
 Link to backend docs - [Backend Doc](https://github.com/Rajdip019/flexauth/tree/main/docs/backend)
