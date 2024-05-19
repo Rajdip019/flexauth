@@ -41,7 +41,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .layer(middleware::from_fn(with_api_key));
 
     // Define routes where middleware is not applied
-    let public_routes = Router::new().route("/", get(root_handler));
+    let public_routes = Router::new().route("/", get(root_handler))
+        .merge(routes::health_check_routes::routes())
+        .layer(middleware::map_response(main_response_mapper));
 
     // Combine public and protected routes
     let app = Router::new()
