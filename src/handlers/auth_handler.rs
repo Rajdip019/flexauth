@@ -41,6 +41,17 @@ pub async fn signup_handler(
         });
     }
 
+    match Auth::email_exists(&state.mongo_client, &payload.email).await {
+        Ok(res) => {
+            if res {
+                return Err(Error::UserAlreadyExists {
+                    message: "User already exists".to_string(),
+                });
+            }
+        }
+        Err(e) => return Err(e),
+    }
+
     if !Validation::password(&payload.password) {
         return Err(Error::InvalidPassword {
             message: "The password must contain at least one alphabetic character (uppercase or lowercase), at least one digit, and must be at least 8 characters long.".to_string(),
