@@ -155,13 +155,5 @@ impl Auth {
             })
         }
     }
-
-    pub async fn email_exists(mongo_client: &Client, email: &str) -> Result<bool> {
-        let user = match User::get_from_email(&mongo_client, email).await {
-            Ok(user) => user,
-            Err(_) => return Ok(false),
-        };
-
-        Ok(user.email == email)
-    }
+    
 }
