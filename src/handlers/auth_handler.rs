@@ -6,7 +6,7 @@ use axum::{
 use axum_macros::debug_handler;
 
 use crate::{
-    core::{auth::Auth, session::Session},
+    core::{auth::Auth, session::Session, user::User},
     errors::{Error, Result},
     models::{
         auth_model::{SignInOrSignUpResponse, SignInPayload, SignUpPayload},
@@ -38,6 +38,13 @@ pub async fn signup_handler(
     if !Validation::email(&payload.email) {
         return Err(Error::InvalidEmail {
             message: "Invalid Email".to_string(),
+        });
+    }
+
+    let user = User::get_from_email(&state.mongo_client, &payload.email).await;
+    if user.is_ok() {
+        return Err(Error::UserAlreadyExists {
+            message: "User already exists".to_string(),
         });
     }
 
