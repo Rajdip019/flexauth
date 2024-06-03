@@ -46,4 +46,17 @@ services:
         SMTP_PORT: ${SMTP_PORT}
     ports:
       - 25:25
+  
+  dashboard:
+    build: 
+      context: ./dashboard
+      target: dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      X_API_KEY: ${X_API_KEY}
+      NEXT_PUBLIC_ENDPOINT: ${NEXT_PUBLIC_ENDPOINT}
+    volumes:
+      - ./dashboard:/app
 
