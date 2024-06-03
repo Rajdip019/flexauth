@@ -62,9 +62,9 @@ After running the Docker containers, you can connect to the MongoDB database usi
    - Click on the "New Connection" button to create a new connection.
    - In the "Connection String" field, paste the following URI:
      ```plaintext
-     mongodb://admin:admin@localhost:27017/?directConnection=true&retryWrites=true&w=majority
+     mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@localhost:27017/?directConnection=true&retryWrites=true&w=majority
      ```
-   - Replace the default URI with the one appropriate for your setup if necessary. This URI includes the credentials (`admin:admin`) and the default MongoDB port (`27017`).
+   - Replace the default URI with the one appropriate for your setup if necessary. This URI includes the credentials (`${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}`) from the .env and the default MongoDB port (`27017`).
    
 3. **Connect to the Database**:
    - Click on the "Connect" button to establish a connection to the MongoDB deployment.
