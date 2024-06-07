@@ -1,9 +1,5 @@
 export async function GET(req: Request) {    
     const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/user/get-all`
-
-    console.log('endPoint', endPoint);
-    console.log('process.env.X_API_KEY', process.env.X_API_KEY);
-    
     
     if (endPoint) {
         try {
