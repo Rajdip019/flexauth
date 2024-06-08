@@ -72,6 +72,8 @@ RUN --mount=type=bind,source=src,target=src \
 
 FROM alpine:3.18 AS final
 
+ARG PORT
+
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
@@ -89,7 +91,7 @@ USER appuser
 COPY --from=build /bin/server /bin/
 
 # Expose the port that the application listens on.
-EXPOSE 8080
+EXPOSE ${PORT}
 
 # What the container should run when it is started.
 CMD ["/bin/server"]

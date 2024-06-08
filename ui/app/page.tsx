@@ -9,13 +9,20 @@ const DashboardPage = () => {
     const [users, setUsers] = useState([] as IUser[])
     const [loading, setLoading] = useState(true)
 
-    const fetchUsers = async () => {
-        setLoading(true)
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_ENDPOINT}/fetch-users`
-        );
-        const data = await res.json();
-        setUsers(data.result);
+    const getAllUsers = async () => {
+        try{
+            setLoading(true)
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/get-all`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            const { data } = await res.json();
+            setUsers(data);
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
         setLoading(false)
     }
 
@@ -54,7 +61,7 @@ const DashboardPage = () => {
     ];
 
     useEffect(() => {
-        fetchUsers()
+        getAllUsers()
     }, [])
 
     return (
@@ -68,13 +75,12 @@ const DashboardPage = () => {
                         : <div>
                             <h1 className='text-3xl text-primary mb-4'>Dashboard</h1>
                             <DataTable
-                                data={users}
+                                data={users ? users : []}
                                 columns={columns}
                             />
                         </div>
                 }
             </div>
-
         </div>
     )
 }
