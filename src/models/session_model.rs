@@ -9,6 +9,7 @@ pub struct VerifySession {
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct SessionResponse {
     pub uid : String,
+    pub session_id : String,
     pub email : String,
     pub user_agent : String,
     pub is_revoked : bool,
@@ -69,4 +70,10 @@ pub struct DeleteSessionsPayload {
 #[derive(Serialize, Debug, Clone)]
 pub struct DeleteSessionsResult {
     pub message: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SessionDetailsPayload {
+    pub uid: String,
+    pub session_id: String,
 }
