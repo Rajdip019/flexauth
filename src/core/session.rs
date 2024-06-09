@@ -12,7 +12,7 @@ use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{dek::Dek, user::User};
+use super::{dek::{self, Dek}, user::User};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
@@ -380,8 +380,15 @@ impl Session {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
+
         match collection_session
-            .update_many(doc! {"uid": uid}, doc! {"$set": {"is_revoked": true}}, None)
+            .update_many(doc! {"uid": encrypted_uid}, doc! {"$set": {"is_revoked": true}}, None)
             .await
         {
             Ok(_) => Ok(()),
@@ -446,8 +453,15 @@ impl Session {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
+
         match collection_session
-            .delete_many(doc! {"uid": uid}, None)
+            .delete_many(doc! {"uid": encrypted_uid}, None)
             .await
         {
             Ok(_) => Ok(()),
