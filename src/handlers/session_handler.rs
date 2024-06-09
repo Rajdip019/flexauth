@@ -10,10 +10,7 @@ use crate::{
     errors::{Error, Result},
     models::{
         session_model::{
-            DeleteAllSessionsPayload, DeleteAllSessionsResult, DeleteSessionsPayload,
-            DeleteSessionsResult, RevokeAllSessionsPayload, RevokeAllSessionsResult,
-            RevokeSessionsPayload, RevokeSessionsResult, SessionRefreshPayload,
-            SessionRefreshResult, SessionResponse, VerifySession,
+            DeleteAllSessionsPayload, DeleteAllSessionsResult, DeleteSessionsPayload, DeleteSessionsResult, RevokeAllSessionsPayload, RevokeAllSessionsResult, RevokeSessionsPayload, RevokeSessionsResult, SessionDetailsPayload, SessionRefreshPayload, SessionRefreshResult, SessionResponse, VerifySession
         },
         user_model::UserIdPayload,
     },
@@ -64,6 +61,26 @@ pub async fn get_all_from_uid(
 
     // verify the token
     match Session::get_all_from_uid(&state.mongo_client, &payload.uid).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
+        Err(e) => return Err(e),
+    };
+}
+
+#[debug_handler]
+pub async fn get_details(
+    State(state): State<AppState>,
+    payload: Json<SessionDetailsPayload>,
+) -> Result<Json<SessionResponse>> {
+    // check if the token is not empty
+    if payload.uid.is_empty() | payload.session_id.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload passed".to_string(),
+        });
+    }
+
+    match Session::get_details(&state.mongo_client, &payload.uid, &payload.session_id).await {
         Ok(data) => {
             return Ok(Json(data));
         }
