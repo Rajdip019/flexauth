@@ -32,6 +32,7 @@ pub enum Error {
     ExpiredSignature { message: String },
     SessionExpired { message: String },
     ActiveSessionExists { message: String },
+    SessionNotFound { message: String },
 
     // -- Validation Errors
     InvalidEmail { message: String },
@@ -153,6 +154,10 @@ impl Error {
                 (StatusCode::CONFLICT, ClientError::ACTIVE_SESSION_EXISTS)
             }
 
+            Self::SessionNotFound { message: _ } => {
+                (StatusCode::NOT_FOUND, ClientError::SESSION_NOT_FOUND)
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -177,6 +182,7 @@ pub enum ClientError {
     EXPIRED_SIGNATURE,
     SESSION_EXPIRED,
     ACTIVE_SESSION_EXISTS,
+    SESSION_NOT_FOUND,
 }
 
 // region:    --- Error Boilerplate

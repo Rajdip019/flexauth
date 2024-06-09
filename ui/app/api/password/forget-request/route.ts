@@ -1,7 +1,7 @@
 export async function POST(req: Request) {
-    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/session/get-all-from-uid`;
+    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/password/forget-request`;
 
-    const { uid } = await req.json();
+    const { email } = await req.json();
 
     if (endPoint) {
         try {
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
                     'x-api-key': process.env.X_API_KEY!,
                 },
                 body: JSON.stringify({
-                    uid
+                    email
                 }),
                 cache: 'no-cache',
             });

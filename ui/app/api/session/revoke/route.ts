@@ -1,7 +1,7 @@
 export async function POST(req: Request) {
-    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/session/get-all-from-uid`;
+    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/session/revoke`;
 
-    const { uid } = await req.json();
+    const { session_id, uid } = await req.json();
 
     if (endPoint) {
         try {
@@ -12,6 +12,7 @@ export async function POST(req: Request) {
                     'x-api-key': process.env.X_API_KEY!,
                 },
                 body: JSON.stringify({
+                    session_id,
                     uid
                 }),
                 cache: 'no-cache',

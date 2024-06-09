@@ -1,7 +1,10 @@
 export async function POST(req: Request) {
-    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/session/get-all-from-uid`;
+    const endPoint: (string | undefined) = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/password/reset`;
 
-    const { uid } = await req.json();
+    const { email, old_password, new_password } = await req.json();
+
+    console.log(email, old_password, new_password);
+
 
     if (endPoint) {
         try {
@@ -12,7 +15,9 @@ export async function POST(req: Request) {
                     'x-api-key': process.env.X_API_KEY!,
                 },
                 body: JSON.stringify({
-                    uid
+                    email,
+                    old_password,
+                    new_password
                 }),
                 cache: 'no-cache',
             });

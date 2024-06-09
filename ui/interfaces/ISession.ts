@@ -1,5 +1,5 @@
 export interface ISession {
-    uid: string;
+    session_id: string;
     email: string;
     user_agent: string;
     is_revoked: boolean;

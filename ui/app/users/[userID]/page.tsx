@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { IUser } from '@/interfaces/IUser';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import React, { useEffect } from 'react'
+import React, { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,10 @@ import { MdEdit } from 'react-icons/md';
 import { useRouter } from 'next/navigation';
 import { ISession } from '@/interfaces/ISession';
 import { ColumnDef } from '@tanstack/react-table';
-import { LuArrowUpRight } from 'react-icons/lu';
 import { DataTable } from '@/components/ui/data-table';
+import { formatTimestampWithAddedDays } from '@/utils/date';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { IoMdMore } from 'react-icons/io';
 
 const UserDetails = ({ params }: any) => {
     const { userID } = params;
@@ -21,6 +23,8 @@ const UserDetails = ({ params }: any) => {
     const [user, setUser] = React.useState<IUser | null>(null);
     const [role, setRole] = React.useState('');
     const [sessions, setSessions] = React.useState([] as ISession[]);
+    const [oldPassword, setOldPassword] = React.useState('');
+    const [newPassword, setNewPassword] = React.useState('');
     const router = useRouter();
 
     //function to update role
@@ -129,29 +133,96 @@ const UserDetails = ({ params }: any) => {
         setLoading(false)
     }
 
+    // revoke session function
+    const revokeSession = async (session_id: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/session/revoke`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id,
+                    uid: userID
+                }),
+            });
+            await fetchAllSessions()
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
+    // delete session function
+    const deleteSession = async (session_id: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/session/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    session_id,
+                    uid: userID
+                }),
+            });
+            await fetchAllSessions()
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
+    // reset password function
+    const resetPassword = async (email: string, old_password: string, new_password: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/password/reset`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    old_password,
+                    new_password
+                }),
+            });
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        } finally {
+            setOldPassword('')
+            setNewPassword('')
+        }
+        setLoading(false)
+    }
+
+    // forget password request function
+    const forgetPassword = async (email: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/password/forget-request`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email
+                }),
+            });
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
 
     const sessionColumns: ColumnDef<ISession>[] = [
         {
-            accessorKey: "uid",
-            header: "UID",
-            cell: ({ row }) => {
-                const session = row.original;
-                return (
-                    <div
-                        className="flex w-[20vw] hover:underline group cursor-pointer items-center"
-                        onClick={() => router.push(`/sessions/${session.uid}`)}
-                    >
-                        <div>{session.uid}</div>
-                        <div className="ml-1 underline hidden group-hover:block transition-all duration-300 ease-in-out">
-                            <LuArrowUpRight className="ml-1" size={16} />
-                        </div>
-                    </div>
-                );
-            },
-        },
-        {
-            accessorKey: "email",
-            header: "Email",
+            accessorKey: "session_id",
+            header: "Session ID",
         },
         {
             accessorKey: "user_agent",
@@ -165,17 +236,6 @@ const UserDetails = ({ params }: any) => {
             },
         },
         {
-            accessorKey: "created_at",
-            header: "Created At",
-            cell: ({ row }) => {
-                return (
-                    <div>
-                        {new Date(parseInt(row.original.created_at.$date.$numberLong)).toLocaleString()}
-                    </div>
-                );
-            },
-        },
-        {
             accessorKey: "updated_at",
             header: "Updated At",
             cell: ({ row }) => {
@@ -184,6 +244,83 @@ const UserDetails = ({ params }: any) => {
                         {new Date(parseInt(row.original.updated_at.$date.$numberLong)).toLocaleString()}
                     </div>
                 );
+            },
+        },
+        {
+            accessorKey: "created_at",
+            header: "Expires At",
+            cell: ({ row }) => {
+                return (
+                    <div>
+                        {formatTimestampWithAddedDays(parseInt(row.original.created_at.$date.$numberLong), 45)}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: "updated_at",
+            header: "Action",
+            cell: ({ row }) => {
+                const session = row.original;
+                return (
+                    <div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                <IoMdMore size={20} />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                            Revoke
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    setLoading(true);
+                                                    await revokeSession(session.session_id);
+                                                    await fetchAllSessions();
+                                                    setLoading(false);
+                                                }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                            Delete
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    setLoading(true);
+                                                    await deleteSession(session.session_id);
+                                                    await fetchAllSessions();
+                                                    setLoading(false);
+                                                }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                )
             },
         },
     ];
@@ -204,7 +341,63 @@ const UserDetails = ({ params }: any) => {
                         : <div>
                             <div className='flex justify-between items-center'>
                                 <h1 className='text-3xl text-primary mb-4'>User Details</h1>
-                                <div className='space-x-2'>
+                                <div className='flex gap-2 items-center'>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger>
+                                            <Button variant="ghost">
+                                                <IoMdMore size={20} />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger className="relative flex items-center w-full rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                                        Reset Password
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Reset Password</AlertDialogTitle>
+                                                            <AlertDialogDescription className='space-y-2'>
+                                                                <Input type="text" placeholder="Enter Old Password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
+                                                                <Input type="text" placeholder="Enter New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <Button variant="destructive" onClick={async () => {
+                                                                setLoading(true);
+                                                                await resetPassword(user?.email!, oldPassword, newPassword);
+                                                                setLoading(false);
+                                                            }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger className="relative flex items-center w-full rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                                        Forget Password
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Forget Password</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <Button variant="destructive" onClick={async () => {
+                                                                setLoading(true);
+                                                                await forgetPassword(user?.email!);
+                                                                setLoading(false);
+                                                            }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                     <Button onClick={() => router.push(`/users/${userID}/update`)}>Update</Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger>
