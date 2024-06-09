@@ -12,7 +12,7 @@ use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{dek::{self, Dek}, user::User};
+use super::{dek::Dek, user::User};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
