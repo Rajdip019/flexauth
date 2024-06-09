@@ -98,6 +98,7 @@ pub async fn refresh_session(
     if payload.id_token.is_empty()
         || payload.refresh_token.is_empty()
         || payload.session_id.is_empty()
+        || payload.uid.is_empty()
     {
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
@@ -119,6 +120,7 @@ pub async fn refresh_session(
     // verify the token
     match Session::refresh(
         &state.mongo_client,
+        &payload.uid,
         &payload.session_id,
         &payload.id_token,
         &payload.refresh_token,
@@ -128,6 +130,7 @@ pub async fn refresh_session(
     {
         Ok(data) => {
             return Ok(Json(SessionRefreshResult {
+                uid: payload.uid.clone(),
                 session_id: payload.session_id.clone(),
                 id_token: data.0,
                 refresh_token: data.1,
@@ -143,14 +146,14 @@ pub async fn revoke(
     payload: Json<RevokeSessionsPayload>,
 ) -> Result<Json<RevokeSessionsResult>> {
     // check if the token is not empty
-    if payload.session_id.is_empty() {
+    if payload.session_id.is_empty() | payload.uid.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
         });
     }
 
     // revoke the session
-    match Session::revoke(&state.mongo_client, &payload.session_id).await {
+    match Session::revoke(&state.mongo_client, &payload.session_id, &payload.uid).await {
         Ok(_) => {
             return Ok(Json(RevokeSessionsResult {
                 message: "Session revoked successfully".to_string(),
@@ -182,13 +185,13 @@ pub async fn delete(
     payload: Json<DeleteSessionsPayload>,
 ) -> Result<Json<DeleteSessionsResult>> {
     // revoke all the sessions
-    if payload.session_id.is_empty() {
+    if payload.session_id.is_empty() | payload.uid.is_empty(){
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
         });
     }
 
-    match Session::delete(&state.mongo_client, &payload.session_id).await {
+    match Session::delete(&state.mongo_client, &payload.session_id, &payload.uid).await {
         Ok(_) => {
             return Ok(Json(DeleteSessionsResult {
                 message: "Session deleted successfully".to_string(),
