@@ -19,6 +19,7 @@ pub struct SessionResponse {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct SessionRefreshPayload {
+    pub uid: String,
     pub session_id: String,
     pub id_token: String,
     pub refresh_token: String,
@@ -26,6 +27,7 @@ pub struct SessionRefreshPayload {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SessionRefreshResult {
+    pub uid: String,
     pub session_id: String,
     pub id_token: String,
     pub refresh_token: String,
@@ -44,6 +46,7 @@ pub struct RevokeAllSessionsResult {
 #[derive(Deserialize, Debug, Clone)]
 pub struct RevokeSessionsPayload {
     pub session_id: String,
+    pub uid: String,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -65,6 +68,7 @@ pub struct DeleteAllSessionsResult {
 #[derive(Deserialize, Debug, Clone)]
 pub struct DeleteSessionsPayload {
     pub session_id: String,
+    pub uid: String,
 }
 
 #[derive(Serialize, Debug, Clone)]

@@ -124,6 +124,7 @@ impl Session {
 
     pub async fn refresh(
         mongo_client: &Client,
+        uid: &str,
         session_id: &str,
         id_token: &str,
         refresh_token: &str,
@@ -133,7 +134,7 @@ impl Session {
         match RefreshToken::verify(&refresh_token) {
             Ok(_) => {}
             Err(e) => {
-                match Self::revoke(&mongo_client, &session_id).await {
+                match Self::revoke(&mongo_client, &session_id, &uid).await {
                     Ok(_) => return Err(e),
                     Err(err) => return Err(err),
                 }
@@ -237,7 +238,7 @@ impl Session {
                                             }),
                                         };
                                     } else {
-                                        match Self::revoke(&mongo_client, &session_id).await {
+                                        match Self::revoke(&mongo_client, &session_id, &uid).await {
                                             Ok(_) => return Err(Error::InvalidToken {
                                                 message: "Invalid token".to_string(),
                                             }),
@@ -263,7 +264,7 @@ impl Session {
                 }
             } 
             Err(e) => {
-                match Self::revoke(&mongo_client, &session_id).await {
+                match Self::revoke(&mongo_client, &session_id, &uid).await {
                     Ok(_) => return Err(e),
                     Err(err) => return Err(err),
                 }
@@ -390,13 +391,20 @@ impl Session {
         }
     }
 
-    pub async fn revoke(mongo_client: &Client, session_id: &str) -> Result<()> {
+    pub async fn revoke(mongo_client: &Client, session_id: &str, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
         match collection_session
             .update_one(
-                doc! {"session_id": session_id},
+                doc! {"session_id": encrypted_session_id},
                 doc! {"$set": {"is_revoked": true}},
                 None,
             )
@@ -409,13 +417,20 @@ impl Session {
         }
     }
 
-    pub async fn delete(mongo_client: &Client, session_id: &str) -> Result<()> {
+    pub async fn delete(mongo_client: &Client, session_id: &str, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
         match collection_session
             .delete_one(
-                doc! { "session_id": session_id },
+                doc! { "session_id": encrypted_session_id },
                 None,
             )
             .await
