@@ -306,6 +306,7 @@ impl Session {
                             println!("{:?}", token);
                             sessions_res.push(SessionResponse {
                                 uid: decrypted_session.uid,
+                                session_id: decrypted_session.session_id,
                                 email: decrypted_session.email,
                                 user_agent: decrypted_session.user_agent,
                                 is_revoked: decrypted_session.is_revoked,
@@ -325,6 +326,54 @@ impl Session {
         }
         Ok(sessions_res)
     }
+
+    pub async fn get_details(mongo_client: &Client, uid: &str, session_id: &str) -> Result<SessionResponse> {
+        let db = mongo_client.database("auth");
+        let collection_session: Collection<Session> = db.collection("sessions");
+
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
+        let session = match collection_session
+            .find_one(doc! {"uid": encrypted_uid, "session_id": encrypted_session_id}, None)
+            .await
+        {
+            Ok(session) => {
+                match session {
+                    Some(data) => {
+                        let decrypted_session = data.decrypt(&dek_data.dek);
+                        Ok(decrypted_session)
+                    }
+                    None => Err(Error::SessionNotFound  {
+                        message: "Session not found".to_string(),
+                    }),
+                }
+            }
+            Err(e) => Err(Error::ServerError {
+                message: e.to_string(),
+            }),
+        };
+
+        match session {
+            Ok(data) => {
+                Ok(SessionResponse {
+                    uid: data.uid,
+                    session_id: data.session_id,
+                    email: data.email,
+                    user_agent: data.user_agent,
+                    is_revoked: data.is_revoked,
+                    created_at: data.created_at,
+                    updated_at: data.updated_at,
+                })
+            }
+            Err(e) => Err(e),
+        }
+    } 
 
     pub async fn revoke_all(mongo_client: &Client, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
