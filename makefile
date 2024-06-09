@@ -55,4 +55,13 @@ run-server: check-env
 # Target to run the ui / next app using npm run dev
 .PHONY: run-ui
 run-ui: check-env
-	cd ui && npm run dev
+	@if lsof -i:3000 -t > /dev/null ; then \
+		echo "PORT:3000 is busy, so can't start the dashboard. Kill the process if there's anything running."; \
+		exit 1; \
+	else \
+		cd ui; \
+		if [ ! -d node_modules ]; then \
+			npm i; \
+		fi; \
+		npm run dev; \
+	fi
