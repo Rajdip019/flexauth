@@ -22,6 +22,7 @@ const UserDetails = ({ params }: any) => {
     const [loading, setLoading] = React.useState(true);
     const [user, setUser] = React.useState<IUser | null>(null);
     const [role, setRole] = React.useState('');
+    const [name, setName] = React.useState('');
     const [sessions, setSessions] = React.useState([] as ISession[]);
     const [oldPassword, setOldPassword] = React.useState('');
     const [newPassword, setNewPassword] = React.useState('');
@@ -85,6 +86,7 @@ const UserDetails = ({ params }: any) => {
             const { data } = await res.json();
             setUser(data);
             setRole(data?.role || '')
+            setName(data?.name || '')
         } catch (error) {
             console.error('Error during POST request:', error);
         }
@@ -210,6 +212,26 @@ const UserDetails = ({ params }: any) => {
                 },
                 body: JSON.stringify({
                     email
+                }),
+            });
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
+    // edit user function
+    const editUser = async (email: string, name: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    name
                 }),
             });
         } catch (error) {
@@ -398,7 +420,31 @@ const UserDetails = ({ params }: any) => {
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                    <Button onClick={() => router.push(`/users/${userID}/update`)}>Update</Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger>
+                                            <Button>
+                                                Update
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className='mb-2'>Update User Name</AlertDialogTitle>
+                                                <AlertDialogDescription className='space-y-2'>
+                                                    <h1>Name</h1>
+                                                    <Input type="text" placeholder="Enter Name" value={name} onChange={(e) => setName(e.target.value)} />
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    setLoading(true);
+                                                    await editUser(user?.email!, name);
+                                                    await getUser();
+                                                    setLoading(false);
+                                                }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                     <AlertDialog>
                                         <AlertDialogTrigger>
                                             <Button variant="destructive">

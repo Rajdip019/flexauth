@@ -3,9 +3,6 @@ export async function POST(req: Request) {
 
     const { email, old_password, new_password } = await req.json();
 
-    console.log(email, old_password, new_password);
-
-
     if (endPoint) {
         try {
             const res = await fetch(endPoint, {

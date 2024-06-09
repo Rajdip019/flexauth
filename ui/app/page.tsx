@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { LuArrowUpRight } from 'react-icons/lu';
-import { ISession } from '@/interfaces/ISession';
+import { Input } from '@/components/ui/input';
 
 const DashboardPage = () => {
     const [users, setUsers] = useState([] as IUser[])
@@ -55,6 +55,25 @@ const DashboardPage = () => {
         setLoading(false)
     }
 
+    const editUser = async (email: string, name: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    name
+                }),
+            });
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
 
     const columns: ColumnDef<IUser>[] = [
         {
@@ -63,7 +82,7 @@ const DashboardPage = () => {
             cell: ({ row }) => {
                 const user = row.original;
                 return (
-                    <div className="flex w-[20vw] hover:underline group cursor-pointer items-center" onClick={() => router.push(`/users/${user.uid}`)}>
+                    <div className="flex w-[20vw] hover:underline group cursor-pointer items-center" onClick={() => router.push(`/user/${user.uid}`)}>
                         <div>{user.name}</div>
                         <div
                             className="ml-1 underline hidden group-hover:block transition-all duration-300 ease-in-out"
@@ -120,6 +139,8 @@ const DashboardPage = () => {
             header: "Action",
             cell: ({ row }) => {
                 const user = row.original;
+                // eslint-disable-next-line react-hooks/rules-of-hooks
+                const [name, setName] = useState(user.name);
                 return (
                     <div>
                         <DropdownMenu>
@@ -127,7 +148,33 @@ const DashboardPage = () => {
                                 <IoMdMore size={20} />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                <DropdownMenuItem className="border-b" onClick={() => router.push(`/users/${user.uid}/update`)}>Edit</DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger>
+                                            <Button>
+                                                Update
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className='mb-2'>Update User Name</AlertDialogTitle>
+                                                <AlertDialogDescription className='space-y-2'>
+                                                    <h1>Name</h1>
+                                                    <Input type="text" placeholder="Enter Name" value={name} onChange={(e) => setName(e.target.value)} />
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    setLoading(true);
+                                                    await editUser(user.email, name);
+                                                    await getAllUsers();
+                                                    setLoading(false);
+                                                }}>{isDeleteLoading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
                                     <AlertDialog>
                                         <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
