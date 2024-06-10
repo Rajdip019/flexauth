@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Navbar from "@/components/shared/Navbar";
 
 const poppins = Poppins({
   weight: '400',
@@ -24,7 +25,12 @@ export default function RootLayout({
       <body className={poppins.className}>
         <div className="hidden sm:block">
           <TooltipProvider>
-            {children}
+            <main className="w-screen">
+              <Navbar />
+              <div className="h-[calc(100vh-4rem)] mt-12 p-6">
+                {children}
+              </div>
+            </main>
           </ TooltipProvider>
         </div>
       </body>

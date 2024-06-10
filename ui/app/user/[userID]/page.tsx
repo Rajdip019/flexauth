@@ -251,13 +251,6 @@ const UserDetails = ({ params }: any) => {
             header: "User Agent",
         },
         {
-            accessorKey: "is_revoked",
-            header: "Revoked",
-            cell: ({ row }) => {
-                return <div>{row.original.is_revoked ? 'True' : 'False'}</div>;
-            },
-        },
-        {
             accessorKey: "updated_at",
             header: "Updated At",
             cell: ({ row }) => {
@@ -357,12 +350,12 @@ const UserDetails = ({ params }: any) => {
             <div>
                 {
                     loading ?
-                        <div className='h-[100vh] flex justify-center items-center'>
+                        <div className='h-[calc(100vh-4rem)] flex justify-center items-center'>
                             <Loader />
                         </div>
                         : <div>
-                            <div className='flex justify-between items-center'>
-                                <h1 className='text-3xl text-primary mb-4'>User Details</h1>
+                            <div className='flex justify-between items-center mb-4'>
+                                <h1 className='text-3xl text-primary'>User Details</h1>
                                 <div className='flex gap-2 items-center'>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger>
@@ -483,8 +476,8 @@ const UserDetails = ({ params }: any) => {
                                             <div className='flex gap-2 items-center'>
                                                 <p className='text-lg'>{user?.role}</p>
                                                 <AlertDialog>
-                                                    <AlertDialogTrigger>
-                                                        <Button variant="ghost" className='p-2'>
+                                                    <AlertDialogTrigger className='py-0'>
+                                                        <Button variant="ghost">
                                                             <MdEdit />
                                                         </Button>
                                                     </AlertDialogTrigger>

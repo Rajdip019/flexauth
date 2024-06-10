@@ -212,15 +212,14 @@ const DashboardPage = () => {
     }, [])
 
     return (
-        <div className='p-6'>
+        <div>
             <div>
                 {
                     loading ?
-                        <div className='h-[100vh] flex justify-center items-center'>
+                        <div className='h-[calc(100vh-4rem)] flex justify-center items-center'>
                             <Loader />
                         </div>
                         : <div>
-                            <h1 className='text-3xl text-primary mb-4'>Dashboard</h1>
                             <DataTable
                                 data={users ? users : []}
                                 columns={columns}
