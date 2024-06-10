@@ -290,7 +290,6 @@ impl Session {
             .find(
                 doc! {
                     "uid": encrypted_uid,
-                    "is_revoked": false,
                 },
                 None,
             )
