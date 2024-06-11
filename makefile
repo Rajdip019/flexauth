@@ -71,6 +71,12 @@ build-run-server: setup
 run-server: setup
 	docker-compose up
 
+# Target to build the ui / next app using npm i
+.PHONY: build-ui
+build-ui:
+	cd ui; \
+	npm i
+
 # Target to run the ui / next app using npm run dev
 .PHONY: run-ui
 run-ui: setup

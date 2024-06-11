@@ -1,10 +1,10 @@
 @tailwind base;
-  @tailwind components;
-  @tailwind utilities;
-  
+@tailwind components;
+@tailwind utilities;
+
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 50% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
@@ -23,15 +23,17 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    --radius: 0.5rem;
   }
 }
 
 
-  @layer base {
-    * {
-      @apply border-border;
-    }
-    body {
-      @apply bg-background text-foreground;
-    }
+@layer base {
+  * {
+    @apply border-border;
   }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
