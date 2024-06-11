@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/shared/Navbar";
+import { Toaster } from "@/components/ui/toaster";
 
 const poppins = Poppins({
   weight: '400',
@@ -31,6 +32,7 @@ export default function RootLayout({
                 {children}
               </div>
             </main>
+            <Toaster />
           </ TooltipProvider>
         </div>
       </body>

@@ -1,22 +1,22 @@
-"use client";
+"use client"
 import React from 'react'
-import Overview from '@/components/Overview/Overview'
+import Users from '@/components/Users/Users'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRouter } from 'next/navigation'
 
-const OverviewPage = () => {
+const UsersPage = () => {
     const router = useRouter();
     return (
         <div>
-            {<Tabs defaultValue="overview" className="w-full mb-4">
+            {<Tabs defaultValue="users" className="w-full mb-4">
                 <TabsList>
                     <TabsTrigger value="overview" onClick={() => router.push("/")}>Overview</TabsTrigger>
-                    <TabsTrigger value="users" onClick={() => router.push("/user")}>Ussrs</TabsTrigger>
+                    <TabsTrigger value="users" onClick={() => router.push("/user")}>Users</TabsTrigger>
                 </TabsList>
             </Tabs>}
-            <Overview />
+            <Users />
         </div>
     )
 }
 
-export default OverviewPage
+export default UsersPage
