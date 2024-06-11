@@ -151,16 +151,17 @@ impl Session {
                         Err(e) => return Err(e),
                     };
 
-                    let encrypted_id = Encryption::encrypt_data(&token_verify_result.0.uid, &dek_data.dek);
+                    let encrypted_uid = Encryption::encrypt_data(&token_verify_result.0.uid, &dek_data.dek);
                     let encrypted_id_token = Encryption::encrypt_data(&id_token, &dek_data.dek);
                     let encrypted_refresh_token =
                         Encryption::encrypt_data(&refresh_token, &dek_data.dek);
+                    let encrypted_session_id = Encryption::encrypt_data(&session_id, &dek_data.dek);
 
                     match collection_session
                         .find_one(
                             doc! {
-                                "uid": &encrypted_id,
-                                "session_id": &session_id,
+                                "uid": &encrypted_uid,
+                                "session_id": &encrypted_session_id,
                                 "is_revoked": false,
                             },
                             None,
@@ -216,7 +217,7 @@ impl Session {
                                         match collection_session
                                             .update_one(
                                                 doc! {
-                                                    "uid": encrypted_id,
+                                                    "uid": encrypted_uid,
                                                     "id_token": encrypted_id_token,
                                                     "refresh_token": encrypted_refresh_token,
                                                     "is_revoked": false,
