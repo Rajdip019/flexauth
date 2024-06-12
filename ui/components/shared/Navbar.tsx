@@ -1,8 +1,9 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BsArrowLeft } from "react-icons/bs";
+import { AiOutlineArrowLeft } from "react-icons/ai";
 import { Button } from "../ui/button";
 
 const Navbar = () => {
@@ -29,7 +30,7 @@ const Navbar = () => {
             return (
                 <div className=" flex items-center">
                     <Button variant="ghost" onClick={() => router.back()}>
-                        <BsArrowLeft size={25} />
+                        <AiOutlineArrowLeft size={25} />
                     </Button>
                     User Details
                 </div>
@@ -38,9 +39,8 @@ const Navbar = () => {
     }
 
     return (
-        <div className="flex justify-between p-6 items-center h-16 border-b fixed w-screen top-0 z-50">
+        <div className="flex justify-between p-6 px-12 items-center h-16 border-b fixed w-screen top-0 z-50">
             <div className="flex items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src="/flexauth_logo.svg"
                     alt="flexauth-logo"
