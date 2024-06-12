@@ -553,15 +553,15 @@ const UserDetails = ({ params }: any) => {
                                     <div className='grid grid-cols-3 gap-5'>
                                         <div>
                                             <p className='text-sm text-gray-500'>Email</p>
-                                            <p className='text-lg'>{user?.email}</p>
+                                            <p className='text-[16px]'>{user?.email}</p>
                                         </div>
                                         <div>
                                             <p className='text-sm text-gray-500'>Role</p>
                                             <Badge className='text-[16px]' variant="secondary">{user?.role}</Badge>
                                         </div>
                                         <div>
-                                            <p className='text-sm text-gray-500'>Email Verified</p>
-                                            <p className='text-lg'>{capitalizeFirstLetter((user?.email_verified!).toString())}</p>
+                                            <p className='text-sm text-gray-500'>Email Verification</p>
+                                            <Badge className='text-[16px]' variant="secondary">{user?.email_verified ? "Completed" : "Pending"}</Badge>
                                         </div>
                                         <div>
                                             <p className='text-sm text-gray-500'>Is Active</p>
@@ -572,13 +572,13 @@ const UserDetails = ({ params }: any) => {
                                         </div>
                                         <div>
                                             <p className='text-sm text-gray-500'>Created At</p>
-                                            <p className='text-lg'>
+                                            <p className='text-[16px]'>
                                                 {new Date(parseInt(user?.created_at.$date.$numberLong!)).toLocaleString()}
                                             </p>
                                         </div>
                                         <div>
                                             <p className='text-sm text-gray-500'>Updated At</p>
-                                            <p className='text-lg'>
+                                            <p className='text-[16px]'>
                                                 {new Date(parseInt(user?.updated_at.$date.$numberLong!)).toLocaleString()}
                                             </p>
                                         </div>
