@@ -182,6 +182,7 @@ pub async fn revoke_all(
 #[debug_handler]
 pub async fn delete(
     State(state): State<AppState>,
+    header: HeaderMap,
     payload: Json<DeleteSessionsPayload>,
 ) -> Result<Json<DeleteSessionsResult>> {
     // revoke all the sessions

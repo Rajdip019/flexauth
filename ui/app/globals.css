@@ -30,7 +30,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border overflow-x-clip;
   }
 
   body {
