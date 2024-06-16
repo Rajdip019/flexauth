@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::{
     errors::{Error, Result},
     models::session_model::SessionResponse,
@@ -271,6 +273,65 @@ impl Session {
                 }
             }
         };
+    }
+
+    pub async fn get_all(mongo_client: &Client) -> Result<Vec<SessionResponse>> {
+        let db = mongo_client.database("auth");
+        let collection_session: Collection<Session> = db.collection("sessions");
+        let collection_dek: Collection<Dek> = db.collection("deks");
+
+        let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+
+        let mut sessions = Vec::new();
+        let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+        // iterate over the sessions and decrypt the data
+        while let Some(dek) = cursor_dek.next().await {
+            let dek_data: Dek = match dek {
+                Ok(data) => data.decrypt(&kek),
+                Err(_) => {
+                    return Err(Error::ServerError {
+                        message: "Failed to get DEK".to_string(),
+                    });
+                }
+            };
+
+            let encrypted_uid_dek = Encryption::encrypt_data(&dek_data.uid, &dek_data.dek);
+
+            println!("{:?}", encrypted_uid_dek);
+
+            // find the session in the sessions collection using the encrypted email to iterate over the sessions
+            let cursor_session = collection_session
+                .find_one(
+                    Some(doc! {
+                        "uid": encrypted_uid_dek,
+                    }),
+                    None,
+                )
+                .await
+                .unwrap();
+
+            match cursor_session {
+                Some(session) => {
+                    let session_data = session.decrypt(&dek_data.dek);
+
+                    sessions.push(SessionResponse {
+                        uid: session_data.uid,
+                        session_id: session_data.session_id,
+                        email: session_data.email,
+                        user_agent: session_data.user_agent,
+                        is_revoked: session_data.is_revoked,
+                        created_at: session_data.created_at,
+                        updated_at: session_data.updated_at,
+                    });
+                }
+                None => {()}
+            }
+        }
+
+        // sort the sessions by created_at
+        sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+        Ok(sessions)
     }
 
     pub async fn get_all_from_uid(
