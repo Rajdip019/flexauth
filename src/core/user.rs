@@ -187,7 +187,79 @@ impl User {
             }
         }
 
+        // sort the users by created_at
+        users.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
         Ok(users)
+    }
+
+    pub async fn get_recent(
+        mongo_client: &Client,
+        limit: i64,
+    ) -> Result<Vec<UserResponse>> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<User> = db.collection("users");
+        let collection_dek: Collection<Dek> = db.collection("deks");
+
+        let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+
+        let mut users = Vec::new();
+        let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+        // iterate over the users and decrypt the data
+        while let Some(dek) = cursor_dek.next().await {
+            let dek_data: Dek = match dek {
+                Ok(data) => data.decrypt(&kek),
+                Err(_) => {
+                    return Err(Error::ServerError {
+                        message: "Failed to get DEK".to_string(),
+                    });
+                }
+            };
+
+            let encrypted_email_dek = Encryption::encrypt_data(&dek_data.email, &dek_data.dek);
+
+            // find the user in the users collection using the encrypted email to iterate over the users
+            let cursor_user = collection
+                .find_one(
+                    Some(doc! {
+                        "email": encrypted_email_dek,
+                    }),
+                    None,
+                )
+                .await
+                .unwrap();
+
+            match cursor_user {
+                Some(user) => {
+                    let user_data = user.decrypt(&dek_data.dek);
+
+                    users.push(UserResponse {
+                        name: user_data.name,
+                        email: user_data.email,
+                        role: user_data.role,
+                        created_at: user_data.created_at,
+                        updated_at: user_data.updated_at,
+                        email_verified: user_data.email_verified,
+                        is_active: user_data.is_active,
+                        uid: user_data.uid,
+                    });
+                }
+                None => {
+                    return Err(Error::UserNotFound {
+                        message: "No user found".to_string(),
+                    });
+                }
+            }
+        }
+
+        // sort the users by created_at
+        users.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
+        // get the recent users
+        let recent_users = users.iter().rev().take(limit as usize).cloned().collect();
+
+        Ok(recent_users)
     }
 
     pub async fn update_role(

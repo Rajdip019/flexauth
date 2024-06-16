@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[debug_handler]
-pub async fn verify_session(
+pub async fn verify_session_handler(
     State(state): State<AppState>,
     payload: Json<VerifySession>,
 ) -> Result<Json<IDToken>> {
@@ -48,7 +48,20 @@ pub async fn verify_session(
 }
 
 #[debug_handler]
-pub async fn get_all_from_uid(
+pub async fn get_all_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<SessionResponse>>> {
+    // verify the token
+    match Session::get_all(&state.mongo_client).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
+        Err(e) => return Err(e),
+    };
+}
+
+#[debug_handler]
+pub async fn get_all_from_uid_handler(
     State(state): State<AppState>,
     payload: Json<UserIdPayload>,
 ) -> Result<Json<Vec<SessionResponse>>> {
@@ -69,7 +82,7 @@ pub async fn get_all_from_uid(
 }
 
 #[debug_handler]
-pub async fn get_details(
+pub async fn get_details_handler(
     State(state): State<AppState>,
     payload: Json<SessionDetailsPayload>,
 ) -> Result<Json<SessionResponse>> {
@@ -89,7 +102,7 @@ pub async fn get_details(
 }
 
 #[debug_handler]
-pub async fn refresh_session(
+pub async fn refresh_session_handler(
     State(state): State<AppState>,
     header: HeaderMap,
     payload: Json<SessionRefreshPayload>,
@@ -141,7 +154,7 @@ pub async fn refresh_session(
 }
 
 #[debug_handler]
-pub async fn revoke(
+pub async fn revoke_handler(
     State(state): State<AppState>,
     payload: Json<RevokeSessionsPayload>,
 ) -> Result<Json<RevokeSessionsResult>> {
@@ -164,7 +177,7 @@ pub async fn revoke(
 }
 
 #[debug_handler]
-pub async fn revoke_all(
+pub async fn revoke_all_handler(
     State(state): State<AppState>,
     payload: Json<RevokeAllSessionsPayload>,
 ) -> Result<Json<RevokeAllSessionsResult>> {
@@ -180,9 +193,9 @@ pub async fn revoke_all(
 }
 
 #[debug_handler]
-pub async fn delete(
+pub async fn delete_handler(
     State(state): State<AppState>,
-    header: HeaderMap,
+
     payload: Json<DeleteSessionsPayload>,
 ) -> Result<Json<DeleteSessionsResult>> {
     // revoke all the sessions
@@ -203,7 +216,7 @@ pub async fn delete(
 }
 
 #[debug_handler]
-pub async fn delete_all(
+pub async fn delete_all_handler(
     State(state): State<AppState>,
     payload: Json<DeleteAllSessionsPayload>,
 ) -> Result<Json<DeleteAllSessionsResult>> {
