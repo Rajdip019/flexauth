@@ -1,7 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
 import { ISession } from "@/interfaces/ISession";
-import { formatTimestampWithAddedDays } from "@/utils/date";
-import { capitalizeFirstLetter } from "@/utils/string";
 import {
     AlertDialog,
     AlertDialogTrigger,
@@ -9,21 +7,19 @@ import {
     AlertDialogTitle,
     AlertDialogDescription,
     AlertDialogCancel,
-} from "@radix-ui/react-alert-dialog";
+} from "@/components/ui/alert-dialog";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
-} from "@radix-ui/react-dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
 import { Loader } from "lucide-react";
 import React, { useCallback, useEffect } from "react";
-import { FaRegCopy } from "react-icons/fa";
 import { IoMdMore } from "react-icons/io";
 import { AlertDialogHeader, AlertDialogFooter } from "../ui/alert-dialog";
 import { Button } from "../ui/button";
-import useCopy from "@/hooks/useCopy";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { DataTable } from "../ui/data-table";
 import UAParser from "ua-parser-js";
@@ -36,7 +32,6 @@ interface SessionTableProps {
 const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
     const [loading, setLoading] = React.useState(false);
     const [sessions, setSessions] = React.useState([]);
-    const { copyHandler } = useCopy();
 
     // fetch all sessions
     const fetchAllSessions = useCallback(async () => {
@@ -247,7 +242,6 @@ const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
                     <div>
                         {
                             format(addDays(
-
                                 parseInt(row.original.created_at.$date.$numberLong)
                                 , 45), "PP - p")
                         }
@@ -281,7 +275,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
                                 {!row.original.is_revoked && (
                                     <DropdownMenuItem
                                         asChild
-                                        className="hover:bg-accent hover:cursor-pointer"
+                                        className="hover:bg-accent hover:cursor-pointer relative z-50"
                                     >
                                         <AlertDialog>
                                             <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
@@ -314,7 +308,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
                                 )}
                                 <DropdownMenuItem
                                     asChild
-                                    className="hover:bg-accent hover:cursor-pointer"
+                                    className="hover:bg-accent hover:cursor-pointer relative z-50"
                                 >
                                     <AlertDialog>
                                         <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
@@ -375,7 +369,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>
-                                                Are you absolutely sure?
+                                                Want to revoke all the sessions?
                                             </AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 This action cannot be undone.
@@ -406,7 +400,7 @@ const SessionTable: React.FC<SessionTableProps> = ({ userID }) => {
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>
-                                                Are you absolutely sure?
+                                                Want to delete all the sessions?
                                             </AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 This action cannot be undone.

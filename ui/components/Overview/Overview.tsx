@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { Loader } from '../custom/Loader';
 import { IUser } from '@/interfaces/IUser';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { FaUsers } from 'react-icons/fa';
+import { MdOutlineConstruction } from "react-icons/md";
 
 const Overview = () => {
     const [users, setUsers] = useState([] as IUser[])
@@ -37,18 +36,26 @@ const Overview = () => {
                     <div className='h-[calc(100vh-10rem)] flex justify-center items-center'>
                         <Loader />
                     </div>
-                    : <div className='grid grid-cols-4 gap-5'>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Total Users</CardTitle>
-                            </CardHeader>
-                            <CardContent className='flex justify-between items-end'>
-                                <p className="text-6xl font-bold">
-                                    {users.length}
-                                </p>
-                                <FaUsers size={80} className='text-primary' />
-                            </CardContent>
-                        </Card>
+                    :
+                    <div className='flex justify-center items-center h-[calc(100vh-10rem)]'>
+                        <div className='flex flex-col items-center gap-5'>
+                            <MdOutlineConstruction className='text-primary' size={160} />
+                            <h1 className='text-3xl'>Hold up! Work is in progress</h1>
+                        </div>
+
+                        {/* <div className='grid grid-cols-4 gap-5'>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Total Users</CardTitle>
+                                </CardHeader>
+                                <CardContent className='flex justify-between items-end'>
+                                    <p className="text-6xl font-bold">
+                                        {users.length}
+                                    </p>
+                                    <FaUsers size={80} className='text-primary' />
+                                </CardContent>
+                            </Card>
+                        </div> */}
                     </div>
             }
         </div>

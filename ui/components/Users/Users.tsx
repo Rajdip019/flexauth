@@ -9,11 +9,15 @@ import { LuArrowUpRight } from 'react-icons/lu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { IoMdMore } from 'react-icons/io';
+import { IoIosWarning, IoMdMore } from 'react-icons/io';
 import { Input } from '@/components/ui/input';
 import { Loader } from '@/components/custom/Loader';
 import { DataTable } from '@/components/ui/data-table';
 import { toast } from '@/components/ui/use-toast';
+import { Badge } from '../ui/badge';
+import { TiTick } from 'react-icons/ti';
+import { GoClockFill } from 'react-icons/go';
+import { format } from 'date-fns';
 
 
 const Users = () => {
@@ -66,7 +70,7 @@ const Users = () => {
             cell: ({ row }) => {
                 const user = row.original;
                 return (
-                    <div className="flex w-[20vw] hover:underline group cursor-pointer items-center" onClick={() => router.push(`/user/${user.uid}`)}>
+                    <div className="flex w-fit hover:underline group cursor-pointer items-center" onClick={() => router.push(`/user/${user.uid}`)}>
                         <div>{user.name}</div>
                         <div
                             className="ml-1 underline hidden group-hover:block transition-all duration-300 ease-in-out"
@@ -87,23 +91,35 @@ const Users = () => {
         },
         {
             accessorKey: "email_verified",
-            header: "Email Verified",
+            header: "Email Verification",
             cell: ({ row }) => {
                 return (
-                    <div>
-                        {row.original.email_verified ? 'True' : 'False'}
-                    </div>
+                    <Badge
+                        className={`${row.original?.email_verified ? "bg-green-500 hover:bg-green-500" : "bg-yellow-500 hover:bg-yellow-500"
+                            } flex gap-1 w-fit rounded`}
+                    >
+                        {row.original?.email_verified ? <TiTick /> : <GoClockFill />}
+
+                        {row.original?.email_verified ? "Verified" : "Pending"}
+                    </Badge>
                 )
             },
         },
         {
             accessorKey: "is_active",
-            header: "Active",
+            header: "Account Status",
             cell: ({ row }) => {
                 return (
-                    <div>
-                        {row.original.is_active ? 'True' : 'False'}
-                    </div>
+                    <Badge
+                        className={`${row.original?.is_active
+                            ? "bg-green-500 hover:bg-green-500"
+                            : "bg-red-500 text-white hover:bg-red-500"
+                            } flex gap-1 w-fit rounded`}
+                    >
+                        {row.original?.is_active ? <TiTick /> : <IoIosWarning />}
+
+                        {row.original?.is_active ? "Active" : "Suspended"}
+                    </Badge>
                 )
             },
         },
@@ -112,8 +128,11 @@ const Users = () => {
             header: "Created At",
             cell: ({ row }) => {
                 return (
-                    <div>
-                        {new Date(parseInt(row.original.created_at.$date.$numberLong)).toLocaleString()}
+                    <div className='w-fit'>
+                        {format(
+                            new Date(parseInt(row.original?.created_at.$date.$numberLong!)),
+                            "PP - p"
+                        )}
                     </div>
                 )
             },
@@ -177,10 +196,8 @@ const Users = () => {
                             <DropdownMenuContent>
                                 <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
                                     <AlertDialog>
-                                        <AlertDialogTrigger>
-                                            <Button>
-                                                Update
-                                            </Button>
+                                        <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                            Update
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>

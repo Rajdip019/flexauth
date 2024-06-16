@@ -1,4 +1,5 @@
 "use client";
+import React, { useCallback, useEffect } from "react";
 import { Loader } from "@/components/custom/Loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +14,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import React, { useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { FaRegCopy } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import { ISession } from "@/interfaces/ISession";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,7 +23,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IoMdMore } from "react-icons/io";
-import useCopy from "@/hooks/useCopy";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { GoClockFill } from "react-icons/go";
@@ -33,19 +30,22 @@ import { TiTick } from "react-icons/ti";
 import { IoIosWarning } from "react-icons/io";
 import { format } from "date-fns";
 import SessionTable from "@/components/session/SessionTable";
+import PasswordInput from "@/components/ui/passwordInput";
+import { FaRegCopy } from "react-icons/fa";
+import useCopy from "@/hooks/useCopy";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const UserDetails = ({ params }: any) => {
     const { userID } = params;
-    const { copyHandler } = useCopy();
     const [loading, setLoading] = React.useState(true);
     const [user, setUser] = React.useState<IUser | null>(null);
     const [role, setRole] = React.useState("");
     const [name, setName] = React.useState("");
-    const [sessions, setSessions] = React.useState([] as ISession[]);
     const [oldPassword, setOldPassword] = React.useState("");
     const [newPassword, setNewPassword] = React.useState("");
     const [confirmNewPassword, setConfirmNewPassword] = React.useState("");
     const router = useRouter();
+    const { copyHandler } = useCopy();
 
     // function to update is_active
     const updateUserActive = async (is_active: boolean) => {
@@ -250,10 +250,27 @@ const UserDetails = ({ params }: any) => {
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex justify-between items-center">
-                                    <h1>{user?.name}</h1>
-                                    {/* <Button variant="outline" onClick={() => copyHandler(user?.uid!, "UID")} className='flex gap-2'>
-                                            Copy UID <FaRegCopy />
-                                        </Button> */}
+                                    <div className="space-y-2">
+                                        <h1>{user?.name}</h1>
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-sm text-accent-foreground">
+                                                {user?.uid}
+                                            </p>
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button variant="ghost" onClick={() => copyHandler(user?.uid!, "UID")} className='flex gap-2'>
+                                                            <FaRegCopy />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Copy UID</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </div>
+
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex gap-2 items-center">
                                             <AlertDialog>
@@ -302,7 +319,7 @@ const UserDetails = ({ params }: any) => {
                                                 <AlertDialogContent>
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>
-                                                            Are you absolutely sure?
+                                                            Want to delete this User?
                                                         </AlertDialogTitle>
                                                         <AlertDialogDescription>
                                                             This action cannot be undone.
@@ -342,34 +359,35 @@ const UserDetails = ({ params }: any) => {
                                                                         Reset Password
                                                                     </AlertDialogTitle>
                                                                     <AlertDialogDescription className="space-y-2">
-                                                                        <Input
-                                                                            type="text"
-                                                                            placeholder="Enter Old Password"
-                                                                            value={oldPassword}
-                                                                            onChange={(e) =>
-                                                                                setOldPassword(e.target.value)
-                                                                            }
+                                                                        <div>
+                                                                            <h1 className="mb-1">Old Password</h1>
+                                                                            <Input
+                                                                                type="text"
+                                                                                placeholder="Enter Old Password"
+                                                                                value={oldPassword}
+                                                                                onChange={(e) =>
+                                                                                    setOldPassword(e.target.value)
+                                                                                }
+                                                                            />
+                                                                        </div>
+                                                                        <PasswordInput
+                                                                            password={newPassword}
+                                                                            setPassword={setNewPassword}
+                                                                            label="New Password"
                                                                         />
-                                                                        <Input
-                                                                            type="text"
-                                                                            placeholder="Enter New Password"
-                                                                            value={newPassword}
-                                                                            onChange={(e) =>
-                                                                                setNewPassword(e.target.value)
-                                                                            }
-                                                                        />
-                                                                        <Input
-                                                                            type="text"
-                                                                            placeholder="Enter New Password"
-                                                                            value={confirmNewPassword}
-                                                                            onChange={(e) =>
-                                                                                setConfirmNewPassword(e.target.value)
-                                                                            }
+                                                                        <PasswordInput
+                                                                            password={confirmNewPassword}
+                                                                            setPassword={setConfirmNewPassword}
+                                                                            label="Confirm New Password"
                                                                         />
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogCancel onClick={() => {
+                                                                        setOldPassword("");
+                                                                        setNewPassword("");
+                                                                        setConfirmNewPassword("");
+                                                                    }}>Cancel</AlertDialogCancel>
                                                                     <Button
                                                                         variant="destructive"
                                                                         onClick={async () => {
@@ -417,6 +435,37 @@ const UserDetails = ({ params }: any) => {
                                                             </AlertDialogContent>
                                                         </AlertDialog>
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        asChild
+                                                        className="hover:bg-accent hover:cursor-pointer"
+                                                    >
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger className="relative flex items-center w-full rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                                                {user?.is_active ? "Suspend Account" : "Activate Account"}
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>
+                                                                        {user?.is_active ? "Suspend Account" : "Activate Account"} {"for " + user?.email}
+                                                                    </AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        are you sure you want to do this?
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        onClick={async () => {
+                                                                            await updateUserActive(!user?.is_active!);
+                                                                        }}
+                                                                    >
+                                                                        {loading ? <Loader /> : <h1>Continue</h1>}
+                                                                    </Button>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -450,8 +499,8 @@ const UserDetails = ({ params }: any) => {
                                         <p className="text-sm text-gray-500 mb-1">Account Status</p>
                                         <Badge
                                             className={`${user?.is_active
-                                                    ? "bg-green-500 hover:bg-green-500"
-                                                    : "bg-red-500 text-white hover:bg-red-500"
+                                                ? "bg-green-500 hover:bg-green-500"
+                                                : "bg-red-500 text-white hover:bg-red-500"
                                                 } flex gap-1 w-fit rounded`}
                                         >
                                             {user?.is_active ? <TiTick /> : <IoIosWarning />}

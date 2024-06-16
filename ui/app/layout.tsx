@@ -4,6 +4,8 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/shared/Navbar";
 import { Toaster } from "@/components/ui/toaster";
+import Sidebar from "@/components/shared/Sidebar/Sidebar";
+import { AppPages } from "@/constants/appconstants";
 
 const poppins = Poppins({
   weight: '400',
@@ -28,8 +30,11 @@ export default function RootLayout({
           <TooltipProvider>
             <main className="w-screen">
               <Navbar />
-              <div className="h-[calc(100vh-4rem)] mt-12 p-6">
-                {children}
+              <div className="flex items-start h-[calc(100vh-4rem)]">
+                <Sidebar items={AppPages} />
+                <div className="p-4 ml-56 min-h-[calc(100vh-4rem)] w-[calc(100vw-14rem)] mt-16">
+                  {children}
+                </div>
               </div>
             </main>
             <Toaster />
