@@ -25,6 +25,17 @@ pub async fn get_all_users_handler(
     }
 }
 
+pub async fn get_recent_users_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<UserResponse>>> {
+    println!(">> HANDLER: get_recent_users_handler called");
+
+    match User::get_recent(&state.mongo_client, 5).await {
+        Ok(users) => Ok(Json(users)),
+        Err(e) => Err(e),
+    }
+}
+
 pub async fn update_user_handler(
     State(state): State<AppState>,
     payload: Json<UpdateUserPayload>,
