@@ -252,7 +252,7 @@ const UserDetails = ({ params }: any) => {
                                 <CardTitle className="flex justify-between items-center">
                                     <div className="space-y-2">
                                         <h1>{user?.name}</h1>
-                                        <div className="flex justify-between items-center">
+                                        <div className="flex justify-between items-center gap-2">
                                             <p className="text-sm text-accent-foreground">
                                                 {user?.uid}
                                             </p>

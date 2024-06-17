@@ -70,7 +70,7 @@ const Users = () => {
             cell: ({ row }) => {
                 const user = row.original;
                 return (
-                    <div className="flex w-fit hover:underline group cursor-pointer items-center" onClick={() => router.push(`/user/${user.uid}`)}>
+                    <div className="flex w-44 hover:underline truncate group cursor-pointer items-center" onClick={() => router.push(`/user/${user.uid}`)}>
                         <div>{user.name}</div>
                         <div
                             className="ml-1 underline hidden group-hover:block transition-all duration-300 ease-in-out"

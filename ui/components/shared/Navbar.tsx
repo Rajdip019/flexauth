@@ -27,7 +27,7 @@ const Navbar = () => {
         }
         if (path.includes("/user/")) {
             return (
-                <div className=" flex items-center">
+                <div className="flex items-center gap-2">
                     <Button variant="ghost" onClick={() => router.back()}>
                         <AiOutlineArrowLeft size={25} />
                     </Button>
@@ -38,8 +38,8 @@ const Navbar = () => {
     }
 
     return (
-        <div className="flex justify-between pr-5 items-center h-16 border-b fixed w-screen top-0 z-50">
-            <div className="flex items-center h-20">
+        <div className="flex justify-between pr-5 items-center h-20 border-b fixed w-screen top-0 z-50">
+            <div className="flex items-center h-28">
                 <div className="p-3 w-56 border-r h-full items-center flex gap-2">
                     <img
                         src="/flexauth_logo.svg"
