@@ -1,6 +1,7 @@
 export interface ISession {
     session_id: string;
     email: string;
+    uid: string;
     user_agent: string;
     is_revoked: boolean;
     created_at: DateRecord;
