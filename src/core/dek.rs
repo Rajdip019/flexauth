@@ -82,10 +82,10 @@ impl Dek {
         let email_regex =
             regex::Regex::new(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$").unwrap();
         let is_email = email_regex.is_match(identifier);
-        let encrypted_identifier = Encryption::encrypt_data(&identifier, &server_kek);
         match is_email {
             true => {
                 // encrypt the email using kek
+                let encrypted_identifier = Encryption::encrypt_data(&identifier, &server_kek);
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
@@ -109,7 +109,7 @@ impl Dek {
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
-                            "uid": encrypted_identifier.clone(),
+                            "uid": identifier,
                         }),
                         None,
                     )
