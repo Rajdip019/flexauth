@@ -296,15 +296,11 @@ impl Session {
                 }
             };
 
-            let encrypted_uid_dek = Encryption::encrypt_data(&dek_data.uid, &dek_data.dek);
-
-            println!("{:?}", encrypted_uid_dek);
-
             // find the session in the sessions collection using the encrypted email to iterate over the sessions
             let cursor_session = collection_session
                 .find_one(
                     Some(doc! {
-                        "uid": encrypted_uid_dek,
+                        "uid": &dek_data.uid,
                     }),
                     None,
                 )
@@ -346,12 +342,10 @@ impl Session {
             Err(e) => return Err(e),
         };
 
-        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
-
         let mut cursor = collection_session
             .find(
                 doc! {
-                    "uid": encrypted_uid,
+                    "uid": uid,
                 },
                 None,
             )
@@ -398,11 +392,10 @@ impl Session {
             Err(e) => return Err(e),
         };
 
-        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
         let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
 
         let session = match collection_session
-            .find_one(doc! {"uid": encrypted_uid, "session_id": encrypted_session_id}, None)
+            .find_one(doc! {"uid": &uid, "session_id": encrypted_session_id}, None)
             .await
         {
             Ok(session) => {
@@ -441,15 +434,8 @@ impl Session {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
-        let dek_data = match Dek::get(mongo_client, uid).await {
-            Ok(dek) => dek,
-            Err(e) => return Err(e),
-        };
-
-        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
-
         match collection_session
-            .update_many(doc! {"uid": encrypted_uid}, doc! {"$set": {"is_revoked": true}}, None)
+            .update_many(doc! {"uid": &uid }, doc! {"$set": {"is_revoked": true}}, None)
             .await
         {
             Ok(_) => Ok(()),
@@ -514,15 +500,8 @@ impl Session {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
-        let dek_data = match Dek::get(mongo_client, uid).await {
-            Ok(dek) => dek,
-            Err(e) => return Err(e),
-        };
-
-        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
-
         match collection_session
-            .delete_many(doc! {"uid": encrypted_uid}, None)
+            .delete_many(doc! {"uid": &uid }, None)
             .await
         {
             Ok(_) => Ok(()),
