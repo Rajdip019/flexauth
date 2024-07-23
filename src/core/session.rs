@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{
     errors::{Error, Result},
     models::session_model::SessionResponse,
@@ -278,52 +276,85 @@ impl Session {
     pub async fn get_all(mongo_client: &Client) -> Result<Vec<SessionResponse>> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
-        let collection_dek: Collection<Dek> = db.collection("deks");
 
-        let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+        // get all the sessions
+        let mut cursor = collection_session.find(None, None).await.unwrap();
 
         let mut sessions = Vec::new();
-        let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
 
-        // iterate over the sessions and decrypt the data
-        while let Some(dek) = cursor_dek.next().await {
-            let dek_data: Dek = match dek {
-                Ok(data) => data.decrypt(&kek),
-                Err(_) => {
-                    return Err(Error::ServerError {
-                        message: "Failed to get DEK".to_string(),
-                    });
-                }
-            };
+        while let Some(session) = cursor.next().await {
+            match session {
+                Ok(data) => {
+                    let dek_data = match Dek::get(mongo_client, &data.uid).await {
+                        Ok(dek) => dek,
+                        Err(e) => return Err(e),
+                    };
 
-            // find the session in the sessions collection using the encrypted email to iterate over the sessions
-            let cursor_session = collection_session
-                .find_one(
-                    Some(doc! {
-                        "uid": &dek_data.uid,
-                    }),
-                    None,
-                )
-                .await
-                .unwrap();
-
-            match cursor_session {
-                Some(session) => {
-                    let session_data = session.decrypt(&dek_data.dek);
+                    let decrypted_session = data.decrypt(&dek_data.dek);
 
                     sessions.push(SessionResponse {
-                        uid: session_data.uid,
-                        session_id: session_data.session_id,
-                        email: session_data.email,
-                        user_agent: session_data.user_agent,
-                        is_revoked: session_data.is_revoked,
-                        created_at: session_data.created_at,
-                        updated_at: session_data.updated_at,
+                        uid: decrypted_session.uid,
+                        session_id: decrypted_session.session_id,
+                        email: decrypted_session.email,
+                        user_agent: decrypted_session.user_agent,
+                        is_revoked: decrypted_session.is_revoked,
+                        created_at: decrypted_session.created_at,
+                        updated_at: decrypted_session.updated_at,
                     });
                 }
-                None => {()}
+                Err(_) => {
+                    return Err(Error::ServerError {
+                        message: "Failed to get session".to_string(),
+                    });
+                }
             }
         }
+        // let collection_dek: Collection<Dek> = db.collection("deks");
+
+        // let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+
+        // let mut sessions = Vec::new();
+        // let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+        // // iterate over the sessions and decrypt the data
+        // while let Some(dek) = cursor_dek.next().await {
+        //     let dek_data: Dek = match dek {
+        //         Ok(data) => data.decrypt(&kek),
+        //         Err(_) => {
+        //             return Err(Error::ServerError {
+        //                 message: "Failed to get DEK".to_string(),
+        //             });
+        //         }
+        //     };
+
+        //     // find the session in the sessions collection using the encrypted email to iterate over the sessions
+        //     let cursor_session = collection_session
+        //         .find_one(
+        //             Some(doc! {
+        //                 "uid": &dek_data.uid,
+        //             }),
+        //             None,
+        //         )
+        //         .await
+        //         .unwrap();
+
+        //     match cursor_session {
+        //         Some(session) => {
+        //             let session_data = session.decrypt(&dek_data.dek);
+
+        //             sessions.push(SessionResponse {
+        //                 uid: session_data.uid,
+        //                 session_id: session_data.session_id,
+        //                 email: session_data.email,
+        //                 user_agent: session_data.user_agent,
+        //                 is_revoked: session_data.is_revoked,
+        //                 created_at: session_data.created_at,
+        //                 updated_at: session_data.updated_at,
+        //             });
+        //         }
+        //         None => {()}
+        //     }
+        // }
 
         // sort the sessions by created_at
         sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));

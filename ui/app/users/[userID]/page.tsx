@@ -29,7 +29,7 @@ import { GoClockFill } from "react-icons/go";
 import { TiTick } from "react-icons/ti";
 import { IoIosWarning } from "react-icons/io";
 import { format } from "date-fns";
-import SessionTable from "@/components/session/SessionTable";
+import SessionTableUser from "@/components/session/SessionTableUser";
 import PasswordInput from "@/components/ui/passwordInput";
 import { FaRegCopy } from "react-icons/fa";
 import useCopy from "@/hooks/useCopy";
@@ -529,7 +529,7 @@ const UserDetails = ({ params }: any) => {
                                 </div>
                             </CardContent>
                         </Card>
-                        <SessionTable userID={userID} />
+                        <SessionTableUser userID={userID} />
                     </div>
                 )}
             </div>
