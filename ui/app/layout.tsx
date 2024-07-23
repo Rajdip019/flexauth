@@ -32,7 +32,7 @@ export default function RootLayout({
               <Navbar />
               <div className="flex items-start h-[calc(100vh-4rem)]">
                 <Sidebar items={AppPages} />
-                <div className="p-4 ml-56 min-h-[calc(100vh-4rem)] w-[calc(100vw-14rem)] mt-20">
+                <div className="p-4 ml-56 min-h-[calc(100vh-5rem)] w-[calc(100vw-14rem)] mt-20">
                   {children}
                 </div>
               </div>
