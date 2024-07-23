@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{
     errors::{Error, Result},
     models::session_model::SessionResponse,
@@ -293,7 +291,7 @@ impl Session {
                     };
 
                     let decrypted_session = data.decrypt(&dek_data.dek);
-                    
+
                     sessions.push(SessionResponse {
                         uid: decrypted_session.uid,
                         session_id: decrypted_session.session_id,
