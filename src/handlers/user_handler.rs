@@ -65,7 +65,7 @@ pub async fn update_user_handler(
     match collection
         .update_one(
             doc! {
-                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                "uid": &dek_data.uid,
             },
             doc! {
                 "$set": {
