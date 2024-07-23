@@ -79,7 +79,7 @@ impl User {
                 match user_collection
                     .find_one(
                         doc! {
-                            "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            "uid": dek_data.uid,
                         },
                         None,
                     )
@@ -110,7 +110,7 @@ impl User {
         match collection
             .find_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &uid,
                 },
                 None,
             )
@@ -281,7 +281,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -331,7 +331,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -380,7 +380,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$inc": {
@@ -436,7 +436,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -480,7 +480,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -524,7 +524,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -574,7 +574,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -829,7 +829,7 @@ impl User {
         match collection
             .delete_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 None,
             )
