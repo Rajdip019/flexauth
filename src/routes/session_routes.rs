@@ -2,9 +2,8 @@ use axum::{extract::State, routing::{get, post}, Router};
 
 use crate::{
     handlers::session_handler::{
-        delete_handler, delete_all_handler, get_all_from_uid_handler, get_details_handler, refresh_session_handler, revoke_handler, revoke_all_handler, verify_session_handler, get_all_handler
-    },
-    AppState,
+        delete_all_handler, delete_handler, get_all_from_uid_handler, get_all_handler, get_details_handler, refresh_session_handler, revoke_all_handler, revoke_handler, verify_session_handler
+    }, AppState
 };
 
 pub fn routes(State(state): State<AppState>) -> Router {
