@@ -65,7 +65,7 @@ pub struct ToggleUserActivationStatusPayload {
 pub struct ToggleUserActivationStatusResponse {
     pub message: String,
     pub email: String,
-    pub is_active: bool
+    pub is_active: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -76,6 +76,7 @@ pub struct UserResponse {
     pub email: String,
     pub email_verified: bool,
     pub is_active: bool,
+    pub blocked_until: Option<DateTime>,
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
 }

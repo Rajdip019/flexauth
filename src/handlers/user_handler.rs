@@ -2,7 +2,9 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::user_model::{
-        RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse
+        RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse,
+        UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse,
+        UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse,
     },
     utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
@@ -25,7 +27,7 @@ pub async fn get_all_users_handler(
 
 pub async fn get_recent_users_handler(
     State(state): State<AppState>,
-    payload: Json<RecentUserPayload>
+    payload: Json<RecentUserPayload>,
 ) -> Result<Json<Vec<UserResponse>>> {
     println!(">> HANDLER: get_recent_users_handler called");
 
@@ -187,6 +189,7 @@ pub async fn get_user_email_handler(
                 role: user.role,
                 is_active: user.is_active,
                 email_verified: user.email_verified,
+                blocked_until: user.blocked_until,
                 created_at: user.created_at,
                 updated_at: user.updated_at,
             }))
@@ -216,6 +219,7 @@ pub async fn get_user_id_handler(
                 role: user.role,
                 is_active: user.is_active,
                 email_verified: user.email_verified,
+                blocked_until: user.blocked_until,
                 created_at: user.created_at,
                 updated_at: user.updated_at,
             }))
