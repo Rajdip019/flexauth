@@ -1,14 +1,11 @@
 use axum::{
-    extract::State,
-    routing::{get, post},
-    Router,
+    extract::State, routing::{get, post}, Router
 };
 
 use crate::{
     handlers::user_handler::{
         delete_user_handler, get_all_users_handler, get_recent_users_handler, get_user_email_handler, get_user_id_handler, toggle_user_activation_status, update_user_handler, update_user_role_handler
-    },
-    AppState,
+    }, AppState
 };
 
 pub fn routes(State(state): State<AppState>) -> Router {
