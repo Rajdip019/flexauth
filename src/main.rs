@@ -3,6 +3,7 @@ use axum::response::Html;
 use axum::routing::get;
 use axum::{middleware, Router};
 use dotenv::dotenv;
+use handlers::password_handler::forget_password_form;
 use middlewares::res_log::main_response_mapper;
 use middlewares::with_api_key::with_api_key;
 use mongodb::Client;
@@ -44,6 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Define routes where middleware is not applied
     let public_routes = Router::new()
         .route("/", get(root_handler))
+        .route("/forget-reset/:id", get(forget_password_form))
         .merge(routes::health_check_routes::routes())
         .layer(middleware::map_response(main_response_mapper));
 
