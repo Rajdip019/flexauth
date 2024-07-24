@@ -79,3 +79,8 @@ pub struct UserResponse {
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
 }
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct RecentUserPayload {
+    pub limit: i64,
+}

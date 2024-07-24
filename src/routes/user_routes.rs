@@ -14,7 +14,7 @@ use crate::{
 pub fn routes(State(state): State<AppState>) -> Router {
     let user_routes = Router::new()
         .route("/get-all", get(get_all_users_handler))
-        .route("/get-recent", get(get_recent_users_handler))
+        .route("/get-recent", post(get_recent_users_handler))
         .route("/get-from-email", post(get_user_email_handler))
         .route("/get-from-id", post(get_user_id_handler))
         .route("/update", post(update_user_handler))
