@@ -30,21 +30,20 @@ pub async fn get_all_overview_handler(
     let active_session_count = all_sessions.iter().filter(|s| !s.is_revoked).count();
     let revoked_session_count = all_sessions.iter().filter(|s| s.is_revoked).count();
 
-    // create a user-agent map from all_sessions
-    let user_agents = all_sessions
+    // create a user-agent map from all_sessions where is_revoked = false
+    let user_agents: Vec<String> = all_sessions
         .iter()
+        .filter(|s| !s.is_revoked)
         .map(|s| s.user_agent.clone())
-        .collect::<Vec<String>>();
+        .collect();
 
     println!(">> user_agents: {:?}", user_agents);
 
     let parser = Parser::new();
 
     // find out os_types, device_types, browser_types from all_sessions using user-agent-parser
-    let results: Vec<Option<WootheeResult>> = all_sessions
-        .iter()
-        .map(|s| parser.parse(s.user_agent.as_str()))
-        .collect();
+    let results: Vec<Option<WootheeResult>> =
+        user_agents.iter().map(|ua| parser.parse(ua)).collect();
 
     // get os_types as a string[] from results
     let os_types: Vec<String> = results
