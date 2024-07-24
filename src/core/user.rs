@@ -165,6 +165,7 @@ impl User {
                 created_at: decrypted_user.created_at,
                 updated_at: decrypted_user.updated_at,
                 email_verified: decrypted_user.email_verified,
+                blocked_until: decrypted_user.blocked_until,
                 is_active: decrypted_user.is_active,
                 uid: decrypted_user.uid,
             });
@@ -222,6 +223,7 @@ impl User {
                 name: decrypted_user.name,
                 email: decrypted_user.email,
                 role: decrypted_user.role,
+                blocked_until: decrypted_user.blocked_until,
                 created_at: decrypted_user.created_at,
                 updated_at: decrypted_user.updated_at,
                 email_verified: decrypted_user.email_verified,

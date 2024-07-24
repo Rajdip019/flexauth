@@ -194,6 +194,7 @@ pub async fn get_user_email_handler(
                 role: user.role,
                 is_active: user.is_active,
                 email_verified: user.email_verified,
+                blocked_until: user.blocked_until,
                 created_at: user.created_at,
                 updated_at: user.updated_at,
             }))
@@ -223,6 +224,7 @@ pub async fn get_user_id_handler(
                 role: user.role,
                 is_active: user.is_active,
                 email_verified: user.email_verified,
+                blocked_until: user.blocked_until,
                 created_at: user.created_at,
                 updated_at: user.updated_at,
             }))
