@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
         .merge(routes::session_routes::routes(State(app_state.clone())))
+        .merge(routes::overview_routes::routes(State(app_state.clone())))
         .layer(middleware::map_response(main_response_mapper))
         .layer(middleware::from_fn(with_api_key));
 
