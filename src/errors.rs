@@ -34,6 +34,9 @@ pub enum Error {
     ActiveSessionExists { message: String },
     SessionNotFound { message: String },
 
+    // -- Email erros
+    EmailVerificationLinkExpired { message: String },
+
     // -- Validation Errors
     InvalidEmail { message: String },
     InvalidUserAgent { message: String },
@@ -158,6 +161,11 @@ impl Error {
                 (StatusCode::NOT_FOUND, ClientError::SESSION_NOT_FOUND)
             }
 
+            // -- Email errors
+            Self::EmailVerificationLinkExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::EMAIL_VERIFICATION_LINK_EXPIRED)
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -183,6 +191,7 @@ pub enum ClientError {
     SESSION_EXPIRED,
     ACTIVE_SESSION_EXISTS,
     SESSION_NOT_FOUND,
+    EMAIL_VERIFICATION_LINK_EXPIRED,
 }
 
 // region:    --- Error Boilerplate
