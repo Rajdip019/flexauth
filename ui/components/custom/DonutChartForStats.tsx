@@ -30,8 +30,8 @@ export function DonutChartStats({ title, chartData, chartConfig, key }: DonutCha
 
     return (
         <Card className="flex flex-col">
-            <CardHeader className="items-center pb-0">
-                <CardTitle>{title}</CardTitle>
+            <CardHeader className="items-start pb-0">
+                <CardTitle className="text-xl">{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 pb-0">
                 <ChartContainer

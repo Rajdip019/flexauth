@@ -164,15 +164,15 @@ const Overview = () => {
                                 chartConfig={userChartConfig}
                                 key='name'
                             />
-                            <Card className='flex flex-col justify-between'>
+                            <Card className='flex flex-col'>
                                 <CardHeader>
-                                    <CardTitle>Blocked Users</CardTitle>
+                                    <CardTitle className="text-xl mb-10">Blocked Users</CardTitle>
                                 </CardHeader>
-                                <CardContent className='flex flex-col gap-5 items-center'>
-                                    <p className="text-5xl font-bold">
+                                <CardContent className='flex gap-10 items-end justify-center'>
+                                    <FaUsersSlash size={120} className='text-gray-300' />
+                                    <p className="text-5xl font-bold mb-4">
                                         {overview?.blocked_user_count}
                                     </p>
-                                    <FaUsersSlash size={80} className='text-gray-300' />
                                 </CardContent>
                             </Card>
                             <DonutChartStats
