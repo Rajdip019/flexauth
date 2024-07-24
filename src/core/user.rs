@@ -685,7 +685,7 @@ impl User {
             &user.name,
             &user.email,
             &"Reset Password",
-            &format!("Please click on the link to reset your password: http://localhost:8080/forget-password-reset/{}", new_doc.id),
+            &format!("Please click on the link to reset your password: http://localhost:8080/forget-reset/{}", new_doc.id),
         ).send().await;
 
         Ok("Forget password request sent to email successfully".to_string())
@@ -702,6 +702,10 @@ impl User {
         let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
             db.collection("forget_password_requests");
 
+        println!("Forget Password Request ID {:?}", req_id);
+        println!("Forget Password Request Email {:?}", email);
+        println!("Forget Password Request New Password {:?}", new_password);
+
         // find the dek with the email
         let dek_data = match Dek::get(&mongo_client, &email).await {
             Ok(dek) => dek,
@@ -716,6 +720,8 @@ impl User {
             .await
             .unwrap()
             .unwrap();
+
+        println!("Forget Password Request {:?}", forget_password_request);
 
         if forget_password_request.is_used {
             return Err(Error::ResetPasswordLinkExpired {
@@ -789,6 +795,7 @@ impl User {
         ).send().await;
 
         Ok("Password updated successfully".to_string())
+
     }
 
     pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
