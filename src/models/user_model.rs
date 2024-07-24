@@ -1,6 +1,6 @@
 use core::str;
 
-use bson::DateTime;
+use bson::{oid::ObjectId, DateTime};
 use serde::{Deserialize, Serialize};
 
 use crate::core::user::User;
@@ -83,4 +83,25 @@ pub struct UserResponse {
 #[derive(Deserialize, Debug, Clone)]
 pub struct RecentUserPayload {
     pub limit: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EmailVerificationRequest {
+    pub _id: ObjectId,
+    pub req_id: String,
+    pub uid: String,
+    pub email: String,
+    pub expires_at: DateTime,
+    pub created_at: Option<DateTime>,
+    pub updated_at: Option<DateTime>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EmailVerificationPayload {
+    pub req_id: String
+}
+#[derive(Serialize, Debug, Clone)]
+pub struct EmailVerificationResponse {
+    pub message: String,
+    pub req_id: String,
 }
