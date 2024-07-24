@@ -2,9 +2,7 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::user_model::{
-        ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload,
-        UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload,
-        UserEmailResponse, UserIdPayload, UserResponse,
+        RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse
     },
     utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
@@ -27,10 +25,11 @@ pub async fn get_all_users_handler(
 
 pub async fn get_recent_users_handler(
     State(state): State<AppState>,
+    payload: Json<RecentUserPayload>
 ) -> Result<Json<Vec<UserResponse>>> {
     println!(">> HANDLER: get_recent_users_handler called");
 
-    match User::get_recent(&state.mongo_client, 5).await {
+    match User::get_recent(&state.mongo_client, payload.limit).await {
         Ok(users) => Ok(Json(users)),
         Err(e) => Err(e),
     }
