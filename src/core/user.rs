@@ -2,7 +2,7 @@ use std::env;
 
 use crate::{
     errors::{Error, Result},
-    models::{password_model::ForgetPasswordRequest, user_model::UserResponse},
+    models::{password_model::ForgetPasswordRequest, user_model::{EmailVerificationRequest, UserResponse}},
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
         email_utils::Email, encryption_utils::Encryption, password_utils::Password
@@ -704,10 +704,6 @@ impl User {
         let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
             db.collection("forget_password_requests");
 
-        println!("Forget Password Request ID {:?}", req_id);
-        println!("Forget Password Request Email {:?}", email);
-        println!("Forget Password Request New Password {:?}", new_password);
-
         // find the dek with the email
         let dek_data = match Dek::get(&mongo_client, &email).await {
             Ok(dek) => dek,
@@ -798,6 +794,118 @@ impl User {
 
         Ok("Password updated successfully".to_string())
 
+    }
+
+    pub async fn verify_email_request(mongo_client: &Client, email: &str) -> Result<EmailVerificationRequest> {
+        // make a new request in the email_verification_requests collection
+        let db = mongo_client.database("auth");
+        let collection: Collection<EmailVerificationRequest> = db.collection("email_verification_requests");
+
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // get a time 24h from now
+        let twenty_four_hours_from_now_millis = DateTime::now().timestamp_millis() + 86400000;
+        let twenty_four_hours_from_now = DateTime::from_millis(twenty_four_hours_from_now_millis);
+
+        let new_doc = EmailVerificationRequest {
+            _id: ObjectId::new(),
+            uid: dek_data.uid,
+            req_id: uuid::Uuid::new().to_string(),
+            email: Encryption::encrypt_data(&email, &dek_data.dek),
+            // expires in 24 hours
+            expires_at: twenty_four_hours_from_now,
+            created_at: Some(DateTime::now()),
+            updated_at: Some(DateTime::now()),
+        };
+
+        collection.insert_one(&new_doc, None).await.unwrap();
+
+        // send a email to the user with the link having id of the new doc
+        Email::new(
+            &"FlexAuth Team",
+            &email,
+            &"Verify Email",
+            &format!("Please click on the link to verify your email: http://localhost:8080/verify-email/{}", new_doc.req_id),
+        ).send().await;
+
+        Ok(new_doc)
+    }
+
+    pub async fn verify_email(mongo_client: &Client, req_id: &str) -> Result<String> {
+        // check if the email_verification_request exists
+        let db = mongo_client.database("auth");
+        let collection: Collection<EmailVerificationRequest> = db.collection("email_verification_requests");
+
+        let email_verification_request = match collection
+            .find_one(doc! { "req_id": req_id }, None)
+            .await
+            .unwrap() {
+            Some(data) => data,
+            None => {
+                return Err(Error::UserNotFound {
+                    message: "Email verification request not found. Please request a new link.".to_string(),
+                });
+            }
+        };
+
+        // check if the request exists
+        if email_verification_request.email.is_empty() {
+            return Err(Error::UserNotFound {
+                message: "Email verification request not found. Please request a new link.".to_string(),
+            });
+        }
+
+        if email_verification_request.expires_at.timestamp_millis() < DateTime::now().timestamp_millis() {
+            return Err(Error::EmailVerificationLinkExpired {
+                message: "The link has expired. Please request a new link.".to_string(),
+            });
+        }
+
+        // update the user with verified email
+        let user_collection: Collection<User> = db.collection("users");
+
+        user_collection
+            .find_one_and_update(
+                doc! { "uid": &email_verification_request.uid },
+                doc! {
+                    "$set": {
+                        "email_verified": true,
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        // delete the email_verification_request
+        collection
+            .delete_one(doc! { "req_id": req_id }, None)
+            .await
+            .unwrap();
+
+        let dek_data = match Dek::get(&mongo_client, &email_verification_request.uid).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        let decrypted_email = Encryption::decrypt_data(&email_verification_request.email, &dek_data.dek);
+
+        // send a email to the user that the email has been verified
+        Email::new(
+            &"FlexAuth Team",
+            &decrypted_email,
+            &"Email Verified",
+            &"Your email has been verified successfully. If it was not you please take action as soon as possible",
+        ).send().await;
+        Ok(req_id.to_string())
     }
 
     pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
