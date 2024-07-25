@@ -8,13 +8,17 @@ pub struct VerifySession {
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
 pub struct SessionResponse {
-    pub uid : String,
-    pub session_id : String,
-    pub email : String,
-    pub user_agent : String,
-    pub is_revoked : bool,
-    pub created_at : DateTime,
-    pub updated_at : DateTime,
+    pub uid: String,
+    pub session_id: String,
+    pub email: String,
+    pub user_agent: String,
+    pub os: String,
+    pub device: String,
+    pub browser: String,
+    pub browser_version: String,
+    pub is_revoked: bool,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -53,7 +57,6 @@ pub struct RevokeSessionsPayload {
 pub struct RevokeSessionsResult {
     pub message: String,
 }
-
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct DeleteAllSessionsPayload {

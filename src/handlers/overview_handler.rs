@@ -2,7 +2,6 @@ use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use bson::doc;
 use bson::DateTime;
-use woothee::parser::{Parser, WootheeResult};
 
 use crate::core::session::Session;
 use crate::errors::Result;
@@ -30,49 +29,21 @@ pub async fn get_all_overview_handler(
     let active_session_count = all_sessions.iter().filter(|s| !s.is_revoked).count();
     let revoked_session_count = all_sessions.iter().filter(|s| s.is_revoked).count();
 
-    // create a user-agent map from all_sessions where is_revoked = false
-    let user_agents: Vec<String> = all_sessions
+    let os_types: Vec<String> = all_sessions
         .iter()
-        .filter(|s| !s.is_revoked)
-        .map(|s| s.user_agent.clone())
+        .map(|session| session.os.clone())
         .collect();
 
-    println!(">> user_agents: {:?}", user_agents);
-
-    let parser = Parser::new();
-
-    // find out os_types, device_types, browser_types from all_sessions using user-agent-parser
-    let results: Vec<Option<WootheeResult>> =
-        user_agents.iter().map(|ua| parser.parse(ua)).collect();
-
-    // get os_types as a string[] from results
-    let os_types: Vec<String> = results
+    let device_types: Vec<String> = all_sessions
         .iter()
-        .map(|r| {
-            r.as_ref()
-                .map_or_else(String::new, |result| result.os.to_string())
-        })
+        .map(|session| session.device.clone())
         .collect();
 
-    // get device_types as a string[] from results
-    let device_types: Vec<String> = results
+    let browser_types: Vec<String> = all_sessions
         .iter()
-        .map(|r| {
-            r.as_ref()
-                .map_or_else(String::new, |result| result.category.to_string())
-        })
+        .map(|session| session.browser.clone())
         .collect();
 
-    // get browser_types as a string[] from results
-    let browser_types: Vec<String> = results
-        .iter()
-        .map(|r| {
-            r.as_ref()
-                .map_or_else(String::new, |result| result.name.to_string())
-        })
-        .collect();
-
-    println!(">> results USER AGENTSSS: {:?}", results);
     println!(">> os_types: {:?}", os_types);
     println!(">> device_types: {:?}", device_types);
     println!(">> browser_types: {:?}", browser_types);
