@@ -416,7 +416,7 @@ pub async fn show_block_user_page(Path(id): Path<String>) -> impl IntoResponse {
                 }})
                     .then(response => {{
                         if (response.ok) {{
-                            document.getElementById('message').textContent = 'User Blocked Successfully.';
+                            document.getElementById('message').textContent = 'You account have been blocked Successfully.';
                             document.getElementById('sub-header').textContent = 'You can close this window now.';
                         }} else {{
                             document.getElementById('message').textContent = 'Link Expired';
