@@ -24,6 +24,8 @@ pub struct Session {
     pub refresh_token: String,
     pub user_agent: String,
     pub os: String,
+    pub os_version: String,
+    pub vendor: String,
     pub device: String,
     pub browser: String,
     pub browser_version: String,
@@ -50,6 +52,14 @@ impl Session {
 
         let os = user_agent_data.as_ref().map_or_else(String::new, |result| result.os.to_string());
 
+        let os_version = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.os_version.to_string());
+
+        let vendor = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.vendor.to_string());
+
         let device = user_agent_data
             .as_ref()
             .map_or_else(String::new, |result| result.category.to_string());
@@ -71,6 +81,8 @@ impl Session {
             refresh_token,
             user_agent: user_agent.to_string(),
             os,
+            os_version,
+            vendor,
             device,
             browser,
             browser_version,
@@ -326,6 +338,8 @@ impl Session {
                         email: decrypted_session.email,
                         user_agent: decrypted_session.user_agent,
                         os: decrypted_session.os,
+                        os_version: decrypted_session.os_version,
+                        vendor: decrypted_session.vendor,
                         device: decrypted_session.device,
                         browser: decrypted_session.browser,
                         browser_version: decrypted_session.browser_version,
@@ -429,6 +443,8 @@ impl Session {
                                 email: decrypted_session.email,
                                 user_agent: decrypted_session.user_agent,
                                 os: decrypted_session.os,
+                                os_version: decrypted_session.os_version,
+                                vendor: decrypted_session.vendor,
                                 device: decrypted_session.device,
                                 browser: decrypted_session.browser,
                                 browser_version: decrypted_session.browser_version,
@@ -489,6 +505,8 @@ impl Session {
                     email: data.email,
                     user_agent: data.user_agent,
                     os: data.os,
+                    os_version: data.os_version,
+                    vendor: data.vendor,
                     device: data.device,
                     browser: data.browser,
                     browser_version: data.browser_version,
