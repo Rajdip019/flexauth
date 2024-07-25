@@ -2,7 +2,7 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::user_model::{
-        BlockUserPayload, BlockUserResponse, EmailVerificationResponse, RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse
+        BlockUserResponse, EmailVerificationResponse, RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse
     },
     utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
@@ -332,7 +332,7 @@ pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoRe
             .navbar {{ background-color: #060A13; overflow: hidden; border-bottom: 0.5px solid #1E293B; }}
             .navbar h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; margin: 0; }}
             .content {{ display: flex; justify-content: center; align-items: center; height: 80vh; }}
-            .message {{ text-align: center; }}
+            .message {{ text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }}
             .message h2 {{ color: #f2f2f2; }}
         </style>
     </head>
@@ -343,6 +343,7 @@ pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoRe
         <div class="content">
             <div class="message">
                 <h2 id="message">Verifying...</h2>
+                <h3 id="sub-header"></h3>
             </div>
         </div>
         <script>
@@ -356,8 +357,10 @@ pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoRe
                     .then(response => {{
                         if (response.ok) {{
                             document.getElementById('message').textContent = 'Email Verified 🎉';
+                            document.getElementById('sub-header').textContent = 'You can close this window now.';
                         }} else {{
                             document.getElementById('message').textContent = 'Verification Link Expired';
+                            document.getElementById('sub-header').textContent = 'Please try again.';
                         }}
                     }})
                     .catch(error => {{
@@ -383,13 +386,13 @@ pub async fn show_block_user_page(Path(id): Path<String>) -> impl IntoResponse {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Email</title>
+        <title>Block Account</title>
         <style>
             body {{ font-family: Arial, sans-serif; margin: 0; background-color: #060A13; color: #f2f2f2; }}
             .navbar {{ background-color: #060A13; overflow: hidden; border-bottom: 0.5px solid #1E293B; }}
             .navbar h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; margin: 0; }}
             .content {{ display: flex; justify-content: center; align-items: center; height: 80vh; }}
-            .message {{ text-align: center; }}
+            .message {{ text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }}
             .message h2 {{ color: #f2f2f2; }}
         </style>
     </head>
@@ -399,7 +402,8 @@ pub async fn show_block_user_page(Path(id): Path<String>) -> impl IntoResponse {
         </div>
         <div class="content">
             <div class="message">
-                <h2 id="message">Verifying...</h2>
+                <h2 id="message">Authenticating...</h2>
+                <h3 id="sub-header"></h3>
             </div>
         </div>
         <script>
@@ -413,8 +417,10 @@ pub async fn show_block_user_page(Path(id): Path<String>) -> impl IntoResponse {
                     .then(response => {{
                         if (response.ok) {{
                             document.getElementById('message').textContent = 'User Blocked Successfully.';
+                            document.getElementById('sub-header').textContent = 'You can close this window now.';
                         }} else {{
                             document.getElementById('message').textContent = 'Link Expired';
+                            document.getElementById('sub-header').textContent = 'Please try again.';
                         }}
                     }})
                     .catch(error => {{

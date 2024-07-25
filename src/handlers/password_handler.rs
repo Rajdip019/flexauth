@@ -118,7 +118,7 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
             h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; }}
             h2 {{ text-align: center; color: #f2f2f2; }}
             p {{ color: #f2f2f2; margin-top: 30px; }}
-            .success {{ display: flex; justify-content: center; align-items: center; height: 100vh; }}
+            .success {{ display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; }}
         </style>
     </head>
     <body>
