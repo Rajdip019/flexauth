@@ -15,6 +15,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart"
+import { FaClock, FaUsersSlash } from "react-icons/fa"
 
 interface DonutChartProps {
     title: string;
@@ -24,7 +25,7 @@ interface DonutChartProps {
 }
 
 export function DonutChartStats({ title, chartData, chartConfig, key }: DonutChartProps) {
-    const totalVisitors = React.useMemo(() => {
+    const totalCount = React.useMemo(() => {
         return chartData.reduce((acc: any, curr: { count: any }) => acc + curr.count, 0)
     }, [chartData])
 
@@ -38,49 +39,56 @@ export function DonutChartStats({ title, chartData, chartConfig, key }: DonutCha
                     config={chartConfig}
                     className="mx-auto aspect-square max-h-[250px]"
                 >
-                    <PieChart>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent />}
-                        />
-                        <Pie
-                            data={chartData}
-                            dataKey="count"
-                            nameKey={key}
-                            innerRadius={60}
-                            strokeWidth={5}
-                        >
-                            <Label
-                                content={({ viewBox }) => {
-                                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                                        return (
-                                            <text
-                                                x={viewBox.cx}
-                                                y={viewBox.cy}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                            >
-                                                <tspan
+                    {totalCount === 0 ?
+                        <CardContent className='flex gap-10 items-end justify-center mt-16'>
+                            <FaClock size={120} className='text-gray-300' />
+                            <p className="text-5xl font-bold mb-4">
+                                {totalCount}
+                            </p>
+                        </CardContent>
+                        : <PieChart>
+                            <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent />}
+                            />
+                            <Pie
+                                data={chartData}
+                                dataKey="count"
+                                nameKey={key}
+                                innerRadius={60}
+                                strokeWidth={5}
+                            >
+                                <Label
+                                    content={({ viewBox }) => {
+                                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                            return (
+                                                <text
                                                     x={viewBox.cx}
                                                     y={viewBox.cy}
-                                                    className="fill-foreground text-3xl font-bold"
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
                                                 >
-                                                    {totalVisitors.toLocaleString()}
-                                                </tspan>
-                                                <tspan
-                                                    x={viewBox.cx}
-                                                    y={(viewBox.cy || 0) + 24}
-                                                    className="fill-muted-foreground"
-                                                >
-                                                    {title}
-                                                </tspan>
-                                            </text>
-                                        )
-                                    }
-                                }}
-                            />
-                        </Pie>
-                    </PieChart>
+                                                    <tspan
+                                                        x={viewBox.cx}
+                                                        y={viewBox.cy}
+                                                        className="fill-foreground text-3xl font-bold"
+                                                    >
+                                                        {totalCount.toLocaleString()}
+                                                    </tspan>
+                                                    <tspan
+                                                        x={viewBox.cx}
+                                                        y={(viewBox.cy || 0) + 24}
+                                                        className="fill-muted-foreground"
+                                                    >
+                                                        {title}
+                                                    </tspan>
+                                                </text>
+                                            )
+                                        }
+                                    }}
+                                />
+                            </Pie>
+                        </PieChart>}
                 </ChartContainer>
             </CardContent>
         </Card>

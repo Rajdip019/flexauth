@@ -1,19 +1,15 @@
 "use client"
 
 import { Label, Pie, PieChart, Sector } from "recharts"
-
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
 import {
     ChartConfig,
     ChartContainer,
-    ChartLegend,
-    ChartLegendContent,
     ChartStyle,
     ChartTooltip,
     ChartTooltipContent,
@@ -31,13 +27,21 @@ interface ChartPieProps {
 }
 
 export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) {
+    console.log("ChartPie", chartData[0]?.name);
+
     const id = "pie-interactive"
-    const [active, setActive] = React.useState(chartData[0].name)
-    const activeIndex = React.useMemo(
-        () => chartData.findIndex((item: any) => item.name === active),
-        [active, chartData]
-    )
+    const [active, setActive] = React.useState(chartData[0]?.name)
+    console.log("active", active);
+
+    const activeIndex = React.useMemo(() => {
+        const index = (chartData as []).findIndex((item: any) => item.name === active);
+        return index === -1 ? 0 : index;
+    }, [active, chartData]);
+
+    console.log("activeIndex", activeIndex);
+
     const options = React.useMemo(() => chartData.map((item: any) => item.name), [chartData])
+
     return (
         <Card data-chart={id} className="flex flex-col">
             <ChartStyle id={id} config={chartConfig} />
@@ -45,7 +49,7 @@ export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) 
                 <div className="grid gap-1">
                     <CardTitle className="text-xl">{title}</CardTitle>
                 </div>
-                <Select value={active} onValueChange={setActive}>
+                {(chartData as []).length > 0 && <Select value={active} onValueChange={setActive}>
                     <SelectTrigger
                         className="ml-auto h-7 w-[130px] rounded-lg pl-2.5"
                         aria-label="Select a value"
@@ -77,7 +81,7 @@ export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) 
                             )
                         })}
                     </SelectContent>
-                </Select>
+                </Select>}
             </CardHeader>
             <CardContent className="flex flex-1 justify-center pb-0">
                 <ChartContainer
@@ -85,7 +89,7 @@ export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) 
                     config={chartConfig}
                     className="mx-auto aspect-square w-full max-h-[250px]"
                 >
-                    <PieChart>
+                    {(chartData as []).length > 0 ? <PieChart>
                         <ChartTooltip
                             cursor={false}
                             content={<ChartTooltipContent hideLabel />}
@@ -141,7 +145,13 @@ export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) 
                                 }}
                             />
                         </Pie>
-                    </PieChart>
+                    </PieChart> :
+                        <CardContent className='flex gap-10 items-end justify-center mt-24'>
+                            <p className="text-xl font-bold mb-4">
+                                No Data to show
+                            </p>
+                        </CardContent>
+                    }
                 </ChartContainer>
             </CardContent>
         </Card>

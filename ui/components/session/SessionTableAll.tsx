@@ -20,14 +20,12 @@ import React, { useCallback, useEffect } from "react";
 import { IoMdMore } from "react-icons/io";
 import { AlertDialogHeader, AlertDialogFooter } from "../ui/alert-dialog";
 import { Button } from "../ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { DataTable } from "../ui/data-table";
-import UAParser from "ua-parser-js";
 import { addDays, format } from "date-fns";
 
 const SessionTableAll: React.FC = () => {
     const [loading, setLoading] = React.useState(false);
-    const [sessions, setSessions] = React.useState([]);
+    const [sessions, setSessions] = React.useState<ISession[]>([]);
 
     // fetch all sessions
     const fetchAllSessions = useCallback(async () => {
@@ -97,24 +95,18 @@ const SessionTableAll: React.FC = () => {
         fetchAllSessions();
     }, [fetchAllSessions]);
 
-    const parser = new UAParser("user-agent");
-
     const sessionColumns: ColumnDef<ISession>[] = [
         {
             accessorKey: "user_agent",
             header: "User Agent",
             cell: ({ row }) => {
-                parser.setUA(row.original.user_agent);
-                const result = parser.getResult();
-
-                console.log(result);
-
+                const session = row.original;
                 return (
                     // render device type and browser name with logo
                     <div className="flex gap-2 h-36 items-center">
                         <div className="flex gap-2 items-center">
                             <div>
-                                {result.device.type === "mobile" &&
+                                {session.device === "smartphone" &&
                                     (
                                         <img
                                             src={`/user-agent/devices/phone.svg`}
@@ -122,41 +114,41 @@ const SessionTableAll: React.FC = () => {
                                             className="w-24 h-24"
                                         />
                                     )}
-                                {result.device.type === undefined &&
+                                {session.device === "pc" &&
                                     (
                                         <img
                                             src={`/user-agent/devices/desktop.svg`}
                                             alt="device-logo"
-                                            className="w-32 h-32 text-white"
+                                            className="w-24 h-24 text-white"
                                         />
                                     )}
                             </div>
                             <div className="flex flex-col gap-2">
-                                <p className=" whitespace-nowrap">{result.device?.vendor} - {result.device?.model}</p>
-                                <p className=" whitespace-nowrap">{result.os?.name} - Version: {result.os?.version ? result.os.version : "Unknown"}</p>
+                                <p className=" whitespace-nowrap">{session?.device === "smartphone" ? "Smartphone" : session?.device === "pc" ? "Desktop" : ""} ({session.vendor})</p>
+                                <p className=" whitespace-nowrap">{session?.os} - Version {session.os_version}</p>
                                 <div className=" flex gap-1 items-center">
-                                    {result.browser.name?.includes("Chrome") && (
+                                    {session?.browser.includes("Chrome") && (
                                         <img
                                             src={`/user-agent/browsers/chrome.png`}
                                             alt="browser-logo"
                                             className="w-4 h-4"
                                         />
                                     )}
-                                    {result.browser.name?.includes("Mozilla") && (
+                                    {session?.browser.includes("Mozilla") && (
                                         <img
                                             src={`/user-agent/browsers/mozilla.png`}
                                             alt="browser-logo"
                                             className="w-4 h-4"
                                         />
                                     )}
-                                    {result.browser.name?.includes("Safari") && (
+                                    {session?.browser.includes("Safari") && (
                                         <img
                                             src={`/user-agent/browsers/safari.png`}
                                             alt="browser-logo"
                                             className="w-4 h-4"
                                         />
                                     )}
-                                    <p className=" whitespace-nowrap">{result.browser?.name} - Version: {result.browser?.version}</p>
+                                    <p className=" whitespace-nowrap">{session?.browser} - Version: {session?.browser_version}</p>
                                 </div>
                             </div>
                         </div>

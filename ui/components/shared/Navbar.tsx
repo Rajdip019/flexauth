@@ -38,7 +38,7 @@ const Navbar = () => {
     }
 
     return (
-        <div className="flex justify-between pr-5 items-center h-20 border-b fixed w-screen top-0 z-50">
+        <div className="flex justify-between pr-5 items-center h-20 border-b fixed w-screen top-0 z-50 bg-background">
             <div className="flex items-center h-28">
                 <div className="p-3 w-56 border-r h-full items-center flex gap-2">
                     <img

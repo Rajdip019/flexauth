@@ -13,6 +13,8 @@ pub struct SessionResponse {
     pub email: String,
     pub user_agent: String,
     pub os: String,
+    pub os_version: String,
+    pub vendor: String,
     pub device: String,
     pub browser: String,
     pub browser_version: String,

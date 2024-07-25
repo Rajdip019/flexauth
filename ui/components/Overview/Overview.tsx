@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 "use client";
 import React, { useEffect, useState } from 'react'
 import { Loader } from '../custom/Loader';
@@ -5,11 +6,27 @@ import { IOverview } from '@/interfaces/IOverview';
 import { DonutChartStats } from '../custom/DonutChartForStats';
 import { ChartConfig } from '../ui/chart';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { FaUsersSlash } from 'react-icons/fa';
 import { ChartPie } from '../custom/PieChart';
+import { IUser } from '@/interfaces/IUser';
+import { ColumnDef } from '@tanstack/react-table';
+import { LuArrowUpRight } from 'react-icons/lu';
+import { useRouter } from 'next/navigation';
+import { Badge } from '../ui/badge';
+import { TiTick } from 'react-icons/ti';
+import { GoClockFill } from 'react-icons/go';
+import { IoIosWarning, IoMdMore } from 'react-icons/io';
+import { format } from 'date-fns';
+import { toast } from '../ui/use-toast';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { DataTable } from '../ui/data-table';
 
 const Overview = () => {
     const [overview, setOverview] = useState<IOverview | null>(null)
+    const [recentUsers, setRecentUsers] = useState<IUser[]>([])
     const [loading, setLoading] = useState(true)
 
     const userChartData = [
@@ -125,6 +142,214 @@ const Overview = () => {
 
     const sessionOSChartConfig = generateChartConfig(osTypeCounts, 2);
 
+    // delete user function
+    const deleteUser = async (email: string) => {
+        try {
+            setLoading(true)
+            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email
+                }),
+            });
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
+    const router = useRouter();
+
+    const columns: ColumnDef<IUser>[] = [
+        {
+            accessorKey: "name",
+            header: "Name",
+            cell: ({ row }) => {
+                const user = row.original;
+                return (
+                    <div className="flex w-44 hover:underline truncate group cursor-pointer items-center" onClick={() => router.push(`/users/${user.uid}`)}>
+                        <div>{user.name}</div>
+                        <div
+                            className="ml-1 underline hidden group-hover:block transition-all duration-300 ease-in-out"
+                        >
+                            <LuArrowUpRight className="ml-1" size={16} />
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
+            accessorKey: "email",
+            header: "Email",
+        },
+        {
+            accessorKey: "role",
+            header: "Role",
+        },
+        {
+            accessorKey: "email_verified",
+            header: "Email Verification",
+            cell: ({ row }) => {
+                return (
+                    <Badge
+                        className={`${row.original?.email_verified ? "bg-green-500 hover:bg-green-500" : "bg-yellow-500 hover:bg-yellow-500"
+                            } flex gap-1 w-fit rounded`}
+                    >
+                        {row.original?.email_verified ? <TiTick /> : <GoClockFill />}
+
+                        {row.original?.email_verified ? "Verified" : "Pending"}
+                    </Badge>
+                )
+            },
+        },
+        {
+            accessorKey: "is_active",
+            header: "Account Status",
+            cell: ({ row }) => {
+                return (
+                    <Badge
+                        className={`${row.original?.is_active
+                            ? "bg-green-500 hover:bg-green-500"
+                            : "bg-red-500 text-white hover:bg-red-500"
+                            } flex gap-1 w-fit rounded`}
+                    >
+                        {row.original?.is_active ? <TiTick /> : <IoIosWarning />}
+
+                        {row.original?.is_active ? "Active" : "Suspended"}
+                    </Badge>
+                )
+            },
+        },
+        {
+            accessorKey: "created_at",
+            header: "Created At",
+            cell: ({ row }) => {
+                return (
+                    <div className='w-fit'>
+                        {format(
+                            new Date(parseInt(row.original?.created_at.$date.$numberLong!)),
+                            "PP - p"
+                        )}
+                    </div>
+                )
+            },
+        },
+        {
+            accessorKey: "updated_at",
+            header: "Action",
+            cell: ({ row }) => {
+                const user = row.original;
+                const [name, setName] = useState(user.name);
+                const [role, setRole] = useState(user.role)
+                // edit user function
+                const editUser = async (email: string, name: string, role: string) => {
+                    if (name === "" || role === "") {
+                        toast({
+                            title: "Error",
+                            description: "Fill all the fields correctly.",
+                            variant: "destructive"
+                        });
+                        return;
+                    };
+                    try {
+                        setLoading(true)
+                        if (role !== user?.role) {
+                            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/update-role`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email: user?.email,
+                                    role
+                                }),
+                            });
+                        }
+                        if (name !== user?.name) {
+                            await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/update`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email,
+                                    name
+                                }),
+                            });
+                        }
+                        await getRecentUsers()
+                    } catch (error) {
+                        console.error('Error during POST request:', error);
+                    }
+                    setLoading(false)
+                }
+
+                return (
+                    <div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger>
+                                <IoMdMore size={20} />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                            Update
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className='mb-2'>Update User Name</AlertDialogTitle>
+                                                <AlertDialogDescription className='space-y-2'>
+                                                    <h1>Name</h1>
+                                                    <Input type="text" placeholder="Enter Name" value={name} onChange={(e) => setName(e.target.value)} />
+                                                    <h1>Role</h1>
+                                                    <Input type="text" placeholder="Enter Role" value={role} onChange={(e) => setRole(e.target.value)} />
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    await editUser(user.email, name, role);
+                                                }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-accent hover:cursor-pointer">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger className="relative flex items-center w-32 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent cursor-pointer">
+                                            Delete
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <Button variant="destructive" onClick={async () => {
+                                                    setLoading(true);
+                                                    await deleteUser(user.email);
+                                                    await getRecentUsers();
+                                                    setLoading(false);
+                                                }}>{loading ? <Loader /> : <h1>Continue</h1>}</Button>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                )
+            },
+        },
+    ];
+
 
     const getOverview = async () => {
         try {
@@ -144,8 +369,32 @@ const Overview = () => {
         setLoading(false)
     }
 
+    const getRecentUsers = async () => {
+        try {
+            setLoading(true)
+            const res = await fetch(`${process.env.NEXT_PUBLIC_ENDPOINT}/api/user/get-recent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ limit: 5 }),
+                cache: 'no-cache',
+            });
+            const { data } = await res.json();
+            setRecentUsers(data);
+        } catch (error) {
+            console.error('Error during POST request:', error);
+        }
+        setLoading(false)
+    }
+
+    const fetchAllData = async () => {
+        await Promise.all([getOverview(), getRecentUsers()])
+    }
+
     useEffect(() => {
-        getOverview()
+        fetchAllData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     return (
@@ -198,6 +447,13 @@ const Overview = () => {
                                 chartData={sessionOsTypeChartData}
                                 chartConfig={sessionOSChartConfig}
                                 key='name'
+                            />
+                        </div>
+                        <div className='mt-5'>
+                            <h1 className='font-bold text-xl my-3'>Recent Users</h1>
+                            <DataTable
+                                data={recentUsers ? recentUsers : []}
+                                columns={columns}
                             />
                         </div>
                     </div>
