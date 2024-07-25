@@ -2,10 +2,7 @@ use crate::{
     core::{dek::Dek, session::Session, user::User},
     errors::{Error, Result},
     models::user_model::{
-        EmailVerificationResponse, RecentUserPayload, ToggleUserActivationStatusPayload,
-        ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse,
-        UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse,
-        UserIdPayload, UserResponse,
+        BlockUserPayload, BlockUserResponse, EmailVerificationResponse, RecentUserPayload, ToggleUserActivationStatusPayload, ToggleUserActivationStatusResponse, UpdateUserPayload, UpdateUserResponse, UpdateUserRolePayload, UpdateUserRoleResponse, UserEmailPayload, UserEmailResponse, UserIdPayload, UserResponse
     },
     utils::{encryption_utils::Encryption, validation_utils::Validation},
     AppState,
@@ -303,6 +300,24 @@ pub async fn delete_user_handler(
 }
 
 #[debug_handler]
+pub async fn block_user_handler(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<BlockUserResponse>> {
+    println!(">> HANDLER: block_request called");
+
+    match User::block(&State(&state).mongo_client, &id).await {
+        Ok(_) => {
+            return Ok(Json(BlockUserResponse {
+                message: "User blocked".to_string(),
+                req_id: id.to_owned(),
+            }));
+        }
+        Err(e) => return Err(e),
+    }
+}
+
+#[debug_handler]
 pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoResponse {
     Html(format!(
         r#"
@@ -332,7 +347,7 @@ pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoRe
         </div>
         <script>
             document.addEventListener('DOMContentLoaded', function() {{
-                fetch('http://localhost:8080/api/user/verify-email/{id}', {{
+                fetch('/api/user/verify-email/{id}', {{
                     headers: {{
                         'Content-Type': 'application/json',
                         'x-api-key': '{api_key}'
@@ -354,6 +369,64 @@ pub async fn show_verification_page_email(Path(id): Path<String>) -> impl IntoRe
     </html>
     "#,
         id = id,
-        api_key = dotenv::var("X_API_KEY").unwrap()
+        api_key = dotenv::var("X_API_KEY").expect("X_API_KEY is not set")
     ))
 }
+
+
+#[debug_handler]
+pub async fn show_block_user_page(Path(id): Path<String>) -> impl IntoResponse {
+    Html(format!(
+        r#"
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Verify Email</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 0; background-color: #060A13; color: #f2f2f2; }}
+            .navbar {{ background-color: #060A13; overflow: hidden; border-bottom: 0.5px solid #1E293B; }}
+            .navbar h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; margin: 0; }}
+            .content {{ display: flex; justify-content: center; align-items: center; height: 80vh; }}
+            .message {{ text-align: center; }}
+            .message h2 {{ color: #f2f2f2; }}
+        </style>
+    </head>
+    <body>
+        <div class='navbar'>
+            <h1>FlexAuth</h1>
+        </div>
+        <div class="content">
+            <div class="message">
+                <h2 id="message">Verifying...</h2>
+            </div>
+        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                fetch('/api/user/block/{id}', {{
+                    headers: {{
+                        'Content-Type': 'application/json',
+                        'x-api-key': '{api_key}'
+                    }},
+                }})
+                    .then(response => {{
+                        if (response.ok) {{
+                            document.getElementById('message').textContent = 'User Blocked Successfully.';
+                        }} else {{
+                            document.getElementById('message').textContent = 'Link Expired';
+                        }}
+                    }})
+                    .catch(error => {{
+                        document.getElementById('message').textContent = 'An error occurred: ' + error.message;
+                    }});
+            }});
+        </script>
+    </body>
+    </html>
+    "#,
+        id = id,
+        api_key = dotenv::var("X_API_KEY").expect("X_API_KEY is not set")
+    ))
+}
+
