@@ -1,5 +1,5 @@
 # Define the list of required environment variables for the root .env file
-REQUIRED_ENV_VARS = PORT SERVER_KEK EMAIL_PASSWORD EMAIL MAIL_NAME SMTP_DOMAIN SMTP_PORT MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD
+REQUIRED_ENV_VARS = PORT SERVER_KEK EMAIL_PASSWORD EMAIL MAIL_NAME SMTP_DOMAIN SMTP_PORT MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD HOST
 
 # Default target to check and update .env file
 .PHONY: setup
@@ -62,14 +62,14 @@ check-private-key:
 	fi
 
 # Target to run the server using Docker Compose with --build option
-.PHONY: run-server
+.PHONY: build-run-server
 build-run-server: setup
-	docker-compose up --build
+	docker compose up --build
 
 # Target to run the server using Docker Compose without --build option
 .PHONY: run-server
 run-server: setup
-	docker-compose up
+	docker compose up
 
 # Target to build the ui / next app using npm i
 .PHONY: build-ui

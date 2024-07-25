@@ -4,7 +4,7 @@ use axum::{
 
 use crate::{
     handlers::user_handler::{
-        delete_user_handler, get_all_users_handler, get_recent_users_handler, get_user_email_handler, get_user_id_handler, toggle_user_activation_status, update_user_handler, update_user_role_handler, verify_email_handler, verify_email_request_handler
+        block_user_handler, delete_user_handler, get_all_users_handler, get_recent_users_handler, get_user_email_handler, get_user_id_handler, toggle_user_activation_status, update_user_handler, update_user_role_handler, verify_email_handler, verify_email_request_handler
     }, AppState
 };
 
@@ -17,6 +17,7 @@ pub fn routes(State(state): State<AppState>) -> Router {
         .route("/update", post(update_user_handler))
         .route("/verify-email-request", post(verify_email_request_handler))
         .route("/verify-email/:id", get(verify_email_handler))
+        .route("/block/:id", get(block_user_handler))
         .route(
             "/toggle-account-active-status",
             post(toggle_user_activation_status),
