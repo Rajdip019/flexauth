@@ -36,6 +36,7 @@ pub enum Error {
 
     // -- Email erros
     EmailVerificationLinkExpired { message: String },
+    BlockRequestLinkExpired { message: String },
 
     // -- Validation Errors
     InvalidEmail { message: String },
@@ -166,6 +167,10 @@ impl Error {
                 (StatusCode::UNAUTHORIZED, ClientError::EMAIL_VERIFICATION_LINK_EXPIRED)
             }
 
+            Self::BlockRequestLinkExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::BLOCK_REQUEST_LINK_EXPIRED)
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -192,6 +197,7 @@ pub enum ClientError {
     ACTIVE_SESSION_EXISTS,
     SESSION_NOT_FOUND,
     EMAIL_VERIFICATION_LINK_EXPIRED,
+    BLOCK_REQUEST_LINK_EXPIRED,
 }
 
 // region:    --- Error Boilerplate

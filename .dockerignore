@@ -28,5 +28,6 @@
 **/values.dev.yaml
 /bin
 /target
+/ui
 LICENSE
 README.md
