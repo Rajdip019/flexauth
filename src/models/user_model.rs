@@ -106,3 +106,26 @@ pub struct EmailVerificationResponse {
     pub message: String,
     pub req_id: String,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserBlockRequest {
+    pub _id: ObjectId,
+    pub req_id: String,
+    pub uid: String,
+    pub email: String,
+    pub is_used: bool,
+    pub expires_at: DateTime,
+    pub created_at: Option<DateTime>,
+    pub updated_at: Option<DateTime>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct BlockUserPayload {
+    pub req_id: String,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct BlockUserResponse {
+    pub message: String,
+    pub req_id: String,
+}

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct ForgetPasswordRequest {
     pub _id: ObjectId,
     pub email: String,
-    pub id: String,
+    pub req_id: String,
     pub is_used: bool,
     pub valid_till: DateTime,
     pub created_at: DateTime,

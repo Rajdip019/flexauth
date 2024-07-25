@@ -97,7 +97,7 @@ pub async fn forget_password_reset_handler(
     }
 }
 
-#[debug_handler] //forget_password_form
+#[debug_handler]
 pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
     Html(format!(r#"
         <!DOCTYPE html>
@@ -107,11 +107,10 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Reset Password</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; background-color: #060A13 }}
+            body {{ font-family: Arial, sans-serif; margin: 0; background-color: #060A13; }}
             .navbar {{ background-color: #060A13; overflow: hidden; border-bottom: 0.5px solid #1E293B; }}
-            .navbar a {{ float: left; display: block; color: #f2f2f2; text-align: center; padding: 14px 16px; text-decoration: none; }}
-            .navbar a:hover {{ background-color: #ddd; color: black; }}
-            .form-div {{ margin: 0 auto; display: flex; justify-content: center; align-items: center }}
+            .navbar h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; }}
+            .form-div {{ margin: 0 auto; display: flex; justify-content: center; align-items: center; }}
             form {{ margin-top: 20px; display: flex; flex-direction: column; align-items: left; width: 40%; }}
             label {{ display: block; margin-top: 10px; text-align: left; color: #f2f2f2; }}
             input {{ width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }}
@@ -119,6 +118,7 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
             h1 {{ color: #f2f2f2; text-align: center; padding: 14px 0px; }}
             h2 {{ text-align: center; color: #f2f2f2; }}
             p {{ color: #f2f2f2; margin-top: 30px; }}
+            .success {{ display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; }}
         </style>
     </head>
     <body>
@@ -127,18 +127,17 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
         </div>
         <h2>Reset Password</h2>
         <div class='form-div'>
-        <form id="resetForm">
-            <label for="email">Enter Email:</label>
-            <input type="email" id="email" name="email" required placeholder="Enter email">
-            <label for="password">Enter Password:</label>
-            <input type="password" id="password" name="password" required placeholder="Enter new password">
-            <label for="confirm_password">Confirm Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required placeholder="Confirm new password">
-            <br />
-            <button type="submit">Submit</button>
-            <p><b>Note:</b> Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.</p>
-        </form>
-        
+            <form id="resetForm">
+                <label for="email">Enter Email:</label>
+                <input type="email" id="email" name="email" required placeholder="Enter email">
+                <label for="password">Enter Password:</label>
+                <input type="password" id="password" name="password" required placeholder="Enter new password">
+                <label for="confirm_password">Confirm Password:</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="Confirm new password">
+                <br />
+                <button type="submit" id="submitBtn">Submit</button>
+                <p><b>Note:</b> Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.</p>
+            </form>
         </div>
         <script>
             document.getElementById('resetForm').addEventListener('submit', function(event) {{
@@ -148,12 +147,15 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
                 const password = document.getElementById('password').value;
                 const confirmPassword = document.getElementById('confirm_password').value;
                 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{{8,}}$/;
+                const submitBtn = document.getElementById('submitBtn');
 
                 if (!passwordPattern.test(password)) {{
                     alert('Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.');
                 }} else if (password !== confirmPassword) {{
                     alert('Passwords do not match.');
                 }} else {{
+                    submitBtn.textContent = 'Loading...';
+                    submitBtn.disabled = true;
                     fetch(`/api/password/forget-reset/{id}`, {{
                         method: 'POST',
                         headers: {{
@@ -166,16 +168,22 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
                         }})
                     }}).then(response => {{
                         if (response.ok) {{
-                            alert('Password reset successful!');
+                            document.body.innerHTML = "<div class='success'><h1>Password changed successfully.</h1> <h2>You can close this window now and proceed to login with your new password.</h2></div>";
                         }} else {{
                             response.json().then(res => {{
                                 alert('Error: ' + res.error.type);
+                                submitBtn.textContent = 'Submit';
+                                submitBtn.disabled = false;
                             }}).catch(error => {{
                                 alert('An error occurred: ' + error.message);
+                                submitBtn.textContent = 'Submit';
+                                submitBtn.disabled = false;
                             }});
                         }}
                     }}).catch(error => {{
                         alert('An error occurred: ' + error.message);
+                        submitBtn.textContent = 'Submit';
+                        submitBtn.disabled = false;
                     }});
                 }}
             }});
@@ -184,3 +192,4 @@ pub async fn forget_password_form(Path(id): Path<String>) -> impl IntoResponse {
     </html>
     "#, id = id, api_key = dotenv::var("X_API_KEY").unwrap()))
 }
+
