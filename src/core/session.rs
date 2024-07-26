@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use bson::{doc, DateTime};
+use woothee::parser::Parser;
 use futures::StreamExt;
 use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,12 @@ pub struct Session {
     pub id_token: String,
     pub refresh_token: String,
     pub user_agent: String,
+    pub os: String,
+    pub os_version: String,
+    pub vendor: String,
+    pub device: String,
+    pub browser: String,
+    pub browser_version: String,
     pub is_revoked: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
@@ -39,6 +46,33 @@ impl Session {
             Err(_) => "".to_string(),
         };
 
+        let parser = Parser::new();
+
+        let user_agent_data = parser.parse(user_agent);
+
+        let os = user_agent_data.as_ref().map_or_else(String::new, |result| result.os.to_string());
+
+        let os_version = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.os_version.to_string());
+
+        let vendor = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.vendor.to_string());
+
+        let device = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.category.to_string());
+
+        let browser = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.name.to_string());
+
+        let browser_version = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.version.to_string());
+
+
         Self {
             uid: user.uid.to_string(),
             session_id: Uuid::new_v4().to_string(),
@@ -46,6 +80,12 @@ impl Session {
             id_token,
             refresh_token,
             user_agent: user_agent.to_string(),
+            os,
+            os_version,
+            vendor,
+            device,
+            browser,
+            browser_version,
             is_revoked: false,
             created_at: DateTime::now(),
             updated_at: DateTime::now(),
@@ -297,6 +337,12 @@ impl Session {
                         session_id: decrypted_session.session_id,
                         email: decrypted_session.email,
                         user_agent: decrypted_session.user_agent,
+                        os: decrypted_session.os,
+                        os_version: decrypted_session.os_version,
+                        vendor: decrypted_session.vendor,
+                        device: decrypted_session.device,
+                        browser: decrypted_session.browser,
+                        browser_version: decrypted_session.browser_version,
                         is_revoked: decrypted_session.is_revoked,
                         created_at: decrypted_session.created_at,
                         updated_at: decrypted_session.updated_at,
@@ -396,6 +442,12 @@ impl Session {
                                 session_id: decrypted_session.session_id,
                                 email: decrypted_session.email,
                                 user_agent: decrypted_session.user_agent,
+                                os: decrypted_session.os,
+                                os_version: decrypted_session.os_version,
+                                vendor: decrypted_session.vendor,
+                                device: decrypted_session.device,
+                                browser: decrypted_session.browser,
+                                browser_version: decrypted_session.browser_version,
                                 is_revoked: decrypted_session.is_revoked,
                                 created_at: decrypted_session.created_at,
                                 updated_at: decrypted_session.updated_at,
@@ -452,6 +504,12 @@ impl Session {
                     session_id: data.session_id,
                     email: data.email,
                     user_agent: data.user_agent,
+                    os: data.os,
+                    os_version: data.os_version,
+                    vendor: data.vendor,
+                    device: data.device,
+                    browser: data.browser,
+                    browser_version: data.browser_version,
                     is_revoked: data.is_revoked,
                     created_at: data.created_at,
                     updated_at: data.updated_at,

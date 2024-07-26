@@ -17,6 +17,9 @@ const SidebarItem: React.FC<Props> = ({ item, path, router }) => {
         if (path.includes("/user/")) {
             return (item.link === "/user")
         }
+        if (path.includes("/users/")) {
+            return (item.link === "/users")
+        }
         return (path === item.link);
     }
 
