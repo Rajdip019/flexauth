@@ -77,7 +77,8 @@ const Overview = () => {
     const deviceCounts: CountObject = (overview ?? {
         device_types: [],
     }).device_types.reduce((acc, device) => {
-        acc[device] = (acc[device] || 0) + 1;
+        const sanitizedKey = device.replace(/\s+/g, ''); // Remove whitespace from the key
+        acc[sanitizedKey] = (acc[sanitizedKey] || 0) + 1;
         return acc;
     }, {} as CountObject);
 
@@ -85,7 +86,8 @@ const Overview = () => {
     const browserCounts: CountObject = (overview ?? {
         browser_types: [],
     }).browser_types.reduce((acc, browser) => {
-        acc[browser] = (acc[browser] || 0) + 1;
+        const sanitizedKey = browser.replace(/\s+/g, ''); // Remove whitespace from the key
+        acc[sanitizedKey] = (acc[sanitizedKey] || 0) + 1;
         return acc;
     }, {} as CountObject);
 
@@ -93,9 +95,11 @@ const Overview = () => {
     const osTypeCounts: CountObject = (overview ?? {
         os_types: [],
     }).os_types.reduce((acc, os) => {
-        acc[os] = (acc[os] || 0) + 1;
+        const sanitizedKey = os.replace(/\s+/g, ''); // Remove whitespace from the key
+        acc[sanitizedKey] = (acc[sanitizedKey] || 0) + 1;
         return acc;
     }, {} as CountObject);
+
 
     // Define a function to generate colors dynamically
     const generateColor = (index: number, themeNo: number) => {

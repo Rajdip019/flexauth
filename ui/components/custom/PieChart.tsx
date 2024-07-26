@@ -6,17 +6,17 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card"
+} from "../ui/card"
 import {
     ChartConfig,
     ChartContainer,
     ChartStyle,
     ChartTooltip,
     ChartTooltipContent,
-} from "@/components/ui/chart"
+} from "../ui/chart"
 import React from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { PieSectorDataItem } from "recharts/types/polar/Pie";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 
 interface ChartPieProps {
@@ -27,18 +27,12 @@ interface ChartPieProps {
 }
 
 export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) {
-    console.log("ChartPie", chartData[0]?.name);
-
     const id = "pie-interactive"
     const [active, setActive] = React.useState(chartData[0]?.name)
-    console.log("active", active);
-
     const activeIndex = React.useMemo(() => {
         const index = (chartData as []).findIndex((item: any) => item.name === active);
         return index === -1 ? 0 : index;
     }, [active, chartData]);
-
-    console.log("activeIndex", activeIndex);
 
     const options = React.useMemo(() => chartData.map((item: any) => item.name), [chartData])
 
@@ -72,7 +66,7 @@ export function ChartPie({ title, chartData, chartConfig, key }: ChartPieProps) 
                                         <span
                                             className="flex h-3 w-3 shrink-0 rounded-sm"
                                             style={{
-                                                backgroundColor: `var(--color-${key})`,
+                                                backgroundColor: config ? chartConfig[key as keyof typeof chartConfig].color : undefined,
                                             }}
                                         />
                                         {config?.label}
