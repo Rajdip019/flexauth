@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flexauth-config
+  namespace: flexauth
+data:
+  database_url: mongodb-service
