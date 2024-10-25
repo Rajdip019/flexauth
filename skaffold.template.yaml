@@ -1,0 +1,26 @@
+apiVersion: skaffold/v2beta11
+kind: Config
+
+build:
+  artifacts:
+    - image: flexauth-server
+      context: .
+      docker:
+        dockerfile: Dockerfile
+        target: dev
+    - image: smtp-server
+      context: .
+      docker:
+        dockerfile: Dockerfile.smtp
+        target: smtp
+        buildArgs: 
+          EMAIL: "${EMAIL}"
+          EMAIL_PASSWORD: "${EMAIL_PASSWORD}"
+          MAIL_NAME: "${MAIL_NAME}"
+          SMTP_DOMAIN: "${SMTP_DOMAIN}"
+          SMTP_PORT: "${SMTP_PORT}"
+
+deploy:
+  kubectl:
+    manifests:
+      - k8s/*
