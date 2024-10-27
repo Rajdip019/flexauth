@@ -11,7 +11,7 @@ services:
       - mongodb
       - smtp-server
     environment:
-      MONGO_URI: mongodb://admin:admin@mongodb:27017
+      MONGO_URI: mongodb
       SERVER_KEK: ${SERVER_KEK}
       EMAIL: ${EMAIL}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
@@ -19,6 +19,8 @@ services:
       SMTP_DOMAIN: ${SMTP_DOMAIN}
       SMTP_PORT: ${SMTP_PORT}
       X_API_KEY: ${X_API_KEY}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - ./src:/app/src
 

@@ -1,9 +1,12 @@
+################################################# Initial Setup #################################################
+
+
 # Define the list of required environment variables for the root .env file
 REQUIRED_ENV_VARS = PORT SERVER_KEK EMAIL_PASSWORD EMAIL MAIL_NAME SMTP_DOMAIN SMTP_PORT MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD
 
 # Default target to check and update .env file
 .PHONY: setup
-setup: update-root-env update-ui-env check-private-key
+setup: update-root-env check-private-key
 
 # Target to check and update the root .env file
 .PHONY: update-root-env
@@ -30,25 +33,6 @@ update-root-env:
 		echo "✅ X_API_KEY"; \
 	fi
 
-# Target to create or overwrite the .env file in ./ui folder
-.PHONY: update-ui-env
-update-ui-env:
-	@if [ ! -f .env ]; then \
-		echo "Root .env file does not exist. Please run 'make check-env' first."; \
-		exit 1; \
-	fi; \
-	PORT=$$(grep -E "^PORT=" .env | cut -d '=' -f 2); \
-	X_API_KEY=$$(grep -E "^X_API_KEY=" .env | cut -d '=' -f 2); \
-	if [ -z "$$PORT" ] || [ -z "$$X_API_KEY" ]; then \
-		echo "Required variables PORT or X_API_KEY are missing in the root .env file."; \
-		exit 1; \
-	fi; \
-	echo "Creating ./ui/.env file with the necessary environment variables..."; \
-	echo "X_API_KEY=$$X_API_KEY" > ./ui/.env; \
-	echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:$$PORT" >> ./ui/.env; \
-	echo "NEXT_PUBLIC_ENDPOINT=http://localhost:3000" >> ./ui/.env; \
-	echo "✅ UI .env file created successfully."
-
 
 # Target to check and generate private_key.pem if it doesn't exist
 .PHONY: check-private-key
@@ -61,32 +45,106 @@ check-private-key:
 		echo "🔑 Generated private_key.pem"; \
 	fi
 
-# Target to run the server using Docker Compose with --build option
-.PHONY: build-run-server
-build-run-server: setup
-	docker compose up --build
+################################################# Docker Setups #################################################
+
+# Build the Docker image for the server target dev only
+.PHONY: flexauth-build-docker
+build-server: check-private-key
+	docker build -f Dockerfile . -t flexauth-server:dev --target dev
 
 # Target to run the server using Docker Compose without --build option
-.PHONY: run-server
-run-server: setup
+.PHONY: flexauth-up-docker
+flexauth-up-docker: setup
 	docker compose up
 
-# Target to build the ui / next app using npm i
-.PHONY: build-ui
-build-ui:
-	cd ui; \
-	npm i
+# Target to run the server using Docker Compose with --build option
+.PHONY: flexauth-build-up-docker
+flexauth-build-up-docker: setup
+	docker compose up --build
 
-# Target to run the ui / next app using npm run dev
-.PHONY: run-ui
-run-ui: setup
-	@if lsof -i:3000 -t > /dev/null ; then \
-		echo "PORT:3000 is busy, so can't start the dashboard. Kill the process if there's anything running."; \
-		exit 1; \
+################################################# Kubernetes Setups #################################################
+
+# Define the .env file and the skaffold files
+ENV_FILE := .env
+SKAFFOLD_TEMPLATE := skaffold.template.yaml
+SKAFFOLD_GENERATED := skaffold.generated.yaml
+NAMESPACE=flexauth
+SECRET=flexauth-secrets
+
+# Load .env file and export all variables for Makefile
+include $(ENV_FILE)
+export $(shell sed 's/=.*//' $(ENV_FILE))
+
+# Generate the skaffold.yaml file with envsubst
+$(SKAFFOLD_GENERATED): $(SKAFFOLD_TEMPLATE)
+	@echo "Generating $(SKAFFOLD_GENERATED) with environment variables..."
+	@envsubst '$$EMAIL $$EMAIL_PASSWORD $$MAIL_NAME $$SMTP_DOMAIN $$SMTP_PORT' < $(SKAFFOLD_TEMPLATE) > $(SKAFFOLD_GENERATED)
+	@echo "$(SKAFFOLD_GENERATED) generated successfully."
+
+create-namespace:
+	@echo "Creating namespace $(NAMESPACE)..."
+	@if kubectl get namespace $(NAMESPACE) >/dev/null 2>&1; then \
+		echo "Namespace $(NAMESPACE) already exists."; \
 	else \
-		cd ui; \
-		if [ ! -d node_modules ]; then \
-			npm i; \
-		fi; \
-		npm run dev; \
+		kubectl create namespace $(NAMESPACE) || (echo "Failed to create namespace." && exit 1); \
 	fi
+
+# Take envs from .env then encode them to base64 and create a secret in k8s using bash
+.PHONY: create-secret
+create-secret:
+	@echo "Creating secret in k8s..."
+	@if kubectl get secret $(SECRET) -n $(NAMESPACE) >/dev/null 2>&1; then \
+		echo "Secret $(SECRET) already exists. Overwriting..."; \
+		kubectl delete secret $(SECRET) -n $(NAMESPACE); \
+	fi && \
+	kubectl create secret generic $(SECRET) --from-env-file=.env -n $(NAMESPACE) || (echo "Failed to create secret." && exit 1)
+
+# Run Minikube
+.PHONY: minikube-up
+minikube-up:
+		@echo "Running Skaffold..."
+		@echo "Checking Minikube status..."
+	@if minikube status | grep -q "host: Running"; then \
+		echo "Minikube is already running."; \
+	else \
+		echo "Starting Minikube..."; \
+		minikube start --driver=docker || (echo "Minikube failed to start." && exit 1); \
+	fi
+
+# Clean up generated files
+.PHONY: clean
+clean:
+	@echo "Cleaning up generated files..."
+	@rm -f $(SKAFFOLD_GENERATED)
+	@echo "Clean-up complete."
+
+# Run flexauth using Skaffold and start tunneling with minikube but don't occupy the terminal
+.PHONY: flexauth-up-k8s
+up-k8s:
+	@skaffold run -f $(SKAFFOLD_GENERATED)
+
+# start warching the logs of the flexauth server using kubectl
+.PHONY: flexauth-logs-k8s
+logs-k8s:
+	@kubectl logs -n $(NAMESPACE) -l app=flexauth-server -f
+
+# Get the local address of the flexauth server and mongo-express server in minikube
+.PHONY: flexauth-address-k8s
+flexauth-address-k8s:
+	@echo "Flexauth is running in minikube. Write "minikube tunnel" to start tunneling."
+	@echo "Then you will be able to see your servers are running at the following addresses:"
+	@echo "Flexauth server address: http://127.0.0.1:8080"
+	@echo "Mongo-express address: http://127.0.0.1:8081"
+
+# Delete all the resources
+.PHONY: flexauth-down-k8s
+down-k8s:
+	@echo "Deleting all resources..."
+	@kubectl delete -f k8s/local
+	@kubectl delete secret flexauth-secrets -n $(NAMESPACE)
+	@kubectl delete namespace $(NAMESPACE)
+	@echo "All resources deleted."
+
+# Final targets
+flexauth-up-k8s: setup minikube-up create-namespace create-secret $(SKAFFOLD_GENERATED) up-k8s clean logs-k8s
+flexauth-down-k8s: down-k8s clean
