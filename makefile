@@ -118,20 +118,45 @@ clean:
 	@rm -f $(SKAFFOLD_GENERATED)
 	@echo "Clean-up complete."
 
-# Run flexauth using Skaffold
+# Run flexauth using Skaffold and start tunneling with minikube but don't occupy the terminal
 .PHONY: flexauth-up-k8s
 up-k8s:
 	@skaffold run -f $(SKAFFOLD_GENERATED)
+
+# start warching the logs of the flexauth server using kubectl
+.PHONY: flexauth-logs-k8s
+logs-k8s:
+	@kubectl logs -n $(NAMESPACE) -l app=flexauth-server -f
+
+# Get the local address of the flexauth server and mongo-express server in minikube
+.PHONY: flexauth-address-k8s
+flexauth-address-k8s:
+	@echo "Flexauth is running in minikube. Write "minikube tunnel" to start tunneling."
+	@echo "Then you will be able to see your servers are running at the following addresses:"
+	@echo "Flexauth server address: http://127.0.0.1:8080"
+	@echo "Mongo-express address: http://127.0.0.1:8081"
+
+# Close minikube tunnel first check if it's running
+.PHONY: flexauth-down-tunnel
+down-tunnel:
+	@echo "Checking if Minikube tunnel is running..."
+	@if pgrep -f "minikube tunnel" > /dev/null; then \
+		echo "Minikube tunnel is running. Closing it now..."; \
+		pkill -f "minikube tunnel"; \
+		echo "Minikube tunnel closed."; \
+	else \
+		echo "Minikube tunnel is not running."; \
+	fi
 
 # Delete all the resources
 .PHONY: flexauth-down-k8s
 down-k8s:
 	@echo "Deleting all resources..."
-	@kubectl delete -f k8s/	
-	@kubectl delete secret flexauth-secrets
+	@kubectl delete -f k8s/local
+	@kubectl delete secret flexauth-secrets -n $(NAMESPACE)
 	@kubectl delete namespace $(NAMESPACE)
 	@echo "All resources deleted."
 
 # Final targets
-flexauth-up-k8s:setup minikube-up create-namespace create-secret $(SKAFFOLD_GENERATED) up-k8s clean
+flexauth-up-k8s: setup minikube-up create-namespace create-secret $(SKAFFOLD_GENERATED) up-k8s clean logs-k8s
 flexauth-down-k8s: down-k8s clean
