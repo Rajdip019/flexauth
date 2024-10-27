@@ -23,4 +23,4 @@ build:
 deploy:
   kubectl:
     manifests:
-      - k8s/*
+      - k8s/local/*

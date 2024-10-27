@@ -85,11 +85,10 @@ metadata:
   name: flexauth-service
   namespace: flexauth
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: flexauth-server
   ports:
     - protocol: TCP
       port: 8080
       targetPort: 8080
-      nodePort: 30008
