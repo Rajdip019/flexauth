@@ -136,18 +136,6 @@ flexauth-address-k8s:
 	@echo "Flexauth server address: http://127.0.0.1:8080"
 	@echo "Mongo-express address: http://127.0.0.1:8081"
 
-# Close minikube tunnel first check if it's running
-.PHONY: flexauth-down-tunnel
-down-tunnel:
-	@echo "Checking if Minikube tunnel is running..."
-	@if pgrep -f "minikube tunnel" > /dev/null; then \
-		echo "Minikube tunnel is running. Closing it now..."; \
-		pkill -f "minikube tunnel"; \
-		echo "Minikube tunnel closed."; \
-	else \
-		echo "Minikube tunnel is not running."; \
-	fi
-
 # Delete all the resources
 .PHONY: flexauth-down-k8s
 down-k8s:
