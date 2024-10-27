@@ -4,3 +4,4 @@ data
 .env.local
 private_key.pem
 .errorviz-version
+skaffold.generated.yaml

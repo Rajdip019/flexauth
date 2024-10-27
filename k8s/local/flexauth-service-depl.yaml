@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flexauth-server
+  namespace: flexauth
+  labels:
+    app: flexauth-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flexauth-server
+  template:
+    metadata:
+      labels:
+        app: flexauth-server
+    spec:
+      containers:
+        - name: flexauth-server
+          image: flexauth-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: flexauth-config
+                  key: database_url
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: PORT
+            - name: SERVER_KEK
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: SERVER_KEK
+            - name: EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: EMAIL
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: EMAIL_PASSWORD
+            - name: MAIL_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: MAIL_NAME
+            - name: SMTP_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: SMTP_DOMAIN
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: SMTP_PORT
+            - name: X_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: X_API_KEY
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: MONGO_INITDB_ROOT_PASSWORD
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: MONGO_INITDB_ROOT_USERNAME
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flexauth-service
+  namespace: flexauth
+spec:
+  type: LoadBalancer
+  selector:
+    app: flexauth-server
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

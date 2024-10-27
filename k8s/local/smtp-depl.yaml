@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smtp-server
+  namespace: flexauth
+  labels:
+    app: smtp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smtp-server
+  template:
+    metadata:
+      labels:
+        app: smtp-server
+    spec:
+      containers:
+        - name: smtp-server
+          image: smtp-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: SMTP_PORT
+            - name: SMTP_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: SMTP_DOMAIN
+            - name: EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: EMAIL
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: flexauth-secrets
+                  key: EMAIL_PASSWORD
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: smtp-server-service
+  namespace: flexauth
+spec:
+  selector:
+    app: smtp-server
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 8082
+      targetPort: 8082
