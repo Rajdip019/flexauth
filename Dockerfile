@@ -4,75 +4,51 @@ ARG RUST_VERSION=1.77
 ARG APP_NAME=inhouse-auth
 
 ################################################################################
-# Create a development stage for building the application.
+# Development Stage
 FROM rust:${RUST_VERSION}-alpine AS dev
 
-# Set the working directory
 WORKDIR /app
 
-# Install system dependencies and required libraries for the build
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static curl
 
-# Install cargo-watch for auto-reloading
-RUN cargo install cargo-watch
+RUN cargo install cargo-watch --locked
 
-# Copy the Cargo.toml and Cargo.lock files separately to cache dependencies
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock ./   
 
-# Create a dummy source file and build dependencies to cache them
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release || true
 RUN rm -rf src
 
-# Copy the actual source code
 COPY . .
 
-# Mount the source code into the container
 VOLUME /app/src
 
-# Entrypoint command
 CMD ["cargo", "watch", "-q", "-c" ,"-x", "run"]
 
 ################################################################################
-# Create a stage for building the application.
-
+# Build Stage
 FROM rust:${RUST_VERSION}-alpine AS build
 ARG APP_NAME
 WORKDIR /app
 
-# Install host build dependencies.
-RUN apk add --no-cache clang lld musl-dev git
+RUN apk add --no-cache clang lld musl-dev git curl pkgconfig openssl-dev openssl-libs-static
 
-# Install OpenSSL development libraries
-RUN apk add --no-cache pkgconfig openssl-dev
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
-# -lssl -lcrypto are required for the openssl crate
-RUN apk add --no-cache openssl-libs-static
+RUN cargo build --locked --release
+RUN cp ./target/release/$APP_NAME /bin/server
 
-
-RUN cargo install cargo-watch
-
-
-RUN --mount=type=bind,source=src,target=src \
-    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=cache,target=/app/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
-    cargo build --locked --release && \
-    cp ./target/release/$APP_NAME /bin/server
-
-################################################################################`
-
-## Final build file
-
+################################################################################
+# Final Stage
 FROM alpine:3.18 AS final
 
 ARG PORT
-
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
+
+# Install curl to fetch the global-bundle.pem
+RUN apk add --no-cache curl
+
 RUN adduser \
     --disabled-password \
     --gecos "" \
@@ -83,11 +59,14 @@ RUN adduser \
     appuser
 USER appuser
 
-# Copy the executable from the "build" stage.
-COPY --from=build /bin/server /bin/
+# Download the global-bundle.pem for MongoDB TLS
+WORKDIR /app
+RUN curl -o /app/global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
-# Expose the port that the application listens on.
+# Copy the application executable
+COPY --from=build /bin/server /bin/server
+
+# Expose the application port
 EXPOSE ${PORT}
 
-# What the container should run when it is started.
 CMD ["/bin/server"]

@@ -1,3 +1,4 @@
+use lettre::transport::smtp::client;
 use mongodb::{
     options::{ClientOptions, ResolverConfig},
     Client,
@@ -15,6 +16,8 @@ pub async fn connect() -> Result<Client, Box<dyn Error>> {
         env::var("MONGO_INITDB_ROOT_PASSWORD").expect("MONGO_INITDB_ROOT_PASSWORD required"),
         client_uri_main
     );
+
+    // let client_uri = "mongodb://admin123:admin123@flexauth-docdb-cluster-stage.cluster-cd4qeekg8jhr.ap-south-1.docdb.amazonaws.com:27017/?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false";
 
     let options =
         match ClientOptions::parse_with_resolver_config(&client_uri, ResolverConfig::cloudflare())
