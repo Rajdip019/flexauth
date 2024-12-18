@@ -1,7 +1,7 @@
 services:
   server:
     build:
-      context: .
+      context: Dockerfile
       target: dev
     ports:
       - "${PORT}:${PORT}"
@@ -24,7 +24,6 @@ services:
     volumes:
       - ./src:/app/src
 
-
   mongodb:
     image: mongodb/mongodb-community-server:latest
     ports:
@@ -38,7 +37,7 @@ services:
 
   smtp-server:
     build:
-      context: .
+      context: ./smtp
       target: smtp
       args:
         EMAIL: ${EMAIL}
