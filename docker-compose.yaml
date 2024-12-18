@@ -38,7 +38,7 @@ services:
 
   smtp-server:
     build:
-      context: .
+      context: ./smtp
       target: smtp
       args:
         EMAIL: ${EMAIL}
