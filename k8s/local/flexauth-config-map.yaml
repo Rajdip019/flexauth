@@ -4,4 +4,4 @@ metadata:
   name: flexauth-config
   namespace: flexauth
 data:
-  database_url: mongodb-service
+  database_url: mongodb-service 

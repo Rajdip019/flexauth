@@ -48,7 +48,7 @@ Please note that we have a code of conduct in place to ensure a welcoming and in
 Ready to start contributing to FlexAuth? Head over to our GitHub repository and fork the project today!
 
 
-[GitHub Repository Link](https://github.com/Rajdip019/flexAuth) 
+[GitHub Repository Link](https://github.com/Rajdip019/flexAuth)
 
 We look forward to your contributions and thank you for helping us make FlexAuth the best platform for designers and teams!
 
