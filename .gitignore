@@ -5,3 +5,4 @@ data
 private_key.pem
 .errorviz-version
 skaffold.generated.yaml
+.DS_Store
