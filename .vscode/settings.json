@@ -3,10 +3,12 @@
         "./Cargo.toml",
     ],
     "cSpell.words": [
+        "blazingly",
         "bson",
         "chrono",
         "deks",
         "dotenv",
+        "flexauth",
         "inhouse",
         "jsonwebtoken",
         "lettre",

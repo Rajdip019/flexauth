@@ -10,10 +10,7 @@ use crate::{
     errors::{Error, Result},
     models::{
         session_model::{
-            DeleteAllSessionsPayload, DeleteAllSessionsResult, DeleteSessionsPayload,
-            DeleteSessionsResult, RevokeAllSessionsPayload, RevokeAllSessionsResult,
-            RevokeSessionsPayload, RevokeSessionsResult, SessionRefreshPayload,
-            SessionRefreshResult, SessionResponse, VerifySession,
+            DeleteAllSessionsPayload, DeleteAllSessionsResult, DeleteSessionsPayload, DeleteSessionsResult, RevokeAllSessionsPayload, RevokeAllSessionsResult, RevokeSessionsPayload, RevokeSessionsResult, SessionDetailsPayload, SessionRefreshPayload, SessionRefreshResult, SessionResponse, VerifySession
         },
         user_model::UserIdPayload,
     },
@@ -22,7 +19,7 @@ use crate::{
 };
 
 #[debug_handler]
-pub async fn verify_session(
+pub async fn verify_session_handler(
     State(state): State<AppState>,
     payload: Json<VerifySession>,
 ) -> Result<Json<IDToken>> {
@@ -51,7 +48,20 @@ pub async fn verify_session(
 }
 
 #[debug_handler]
-pub async fn get_all_from_uid(
+pub async fn get_all_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<SessionResponse>>> {
+    // verify the token
+    match Session::get_all(&state.mongo_client).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
+        Err(e) => return Err(e),
+    };
+}
+
+#[debug_handler]
+pub async fn get_all_from_uid_handler(
     State(state): State<AppState>,
     payload: Json<UserIdPayload>,
 ) -> Result<Json<Vec<SessionResponse>>> {
@@ -72,7 +82,27 @@ pub async fn get_all_from_uid(
 }
 
 #[debug_handler]
-pub async fn refresh_session(
+pub async fn get_details_handler(
+    State(state): State<AppState>,
+    payload: Json<SessionDetailsPayload>,
+) -> Result<Json<SessionResponse>> {
+    // check if the token is not empty
+    if payload.uid.is_empty() | payload.session_id.is_empty() {
+        return Err(Error::InvalidPayload {
+            message: "Invalid payload passed".to_string(),
+        });
+    }
+
+    match Session::get_details(&state.mongo_client, &payload.uid, &payload.session_id).await {
+        Ok(data) => {
+            return Ok(Json(data));
+        }
+        Err(e) => return Err(e),
+    };
+}
+
+#[debug_handler]
+pub async fn refresh_session_handler(
     State(state): State<AppState>,
     header: HeaderMap,
     payload: Json<SessionRefreshPayload>,
@@ -81,6 +111,7 @@ pub async fn refresh_session(
     if payload.id_token.is_empty()
         || payload.refresh_token.is_empty()
         || payload.session_id.is_empty()
+        || payload.uid.is_empty()
     {
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
@@ -102,6 +133,7 @@ pub async fn refresh_session(
     // verify the token
     match Session::refresh(
         &state.mongo_client,
+        &payload.uid,
         &payload.session_id,
         &payload.id_token,
         &payload.refresh_token,
@@ -111,6 +143,7 @@ pub async fn refresh_session(
     {
         Ok(data) => {
             return Ok(Json(SessionRefreshResult {
+                uid: payload.uid.clone(),
                 session_id: payload.session_id.clone(),
                 id_token: data.0,
                 refresh_token: data.1,
@@ -121,19 +154,19 @@ pub async fn refresh_session(
 }
 
 #[debug_handler]
-pub async fn revoke(
+pub async fn revoke_handler(
     State(state): State<AppState>,
     payload: Json<RevokeSessionsPayload>,
 ) -> Result<Json<RevokeSessionsResult>> {
     // check if the token is not empty
-    if payload.session_id.is_empty() {
+    if payload.session_id.is_empty() | payload.uid.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
         });
     }
 
     // revoke the session
-    match Session::revoke(&state.mongo_client, &payload.session_id).await {
+    match Session::revoke(&state.mongo_client, &payload.session_id, &payload.uid).await {
         Ok(_) => {
             return Ok(Json(RevokeSessionsResult {
                 message: "Session revoked successfully".to_string(),
@@ -144,7 +177,7 @@ pub async fn revoke(
 }
 
 #[debug_handler]
-pub async fn revoke_all(
+pub async fn revoke_all_handler(
     State(state): State<AppState>,
     payload: Json<RevokeAllSessionsPayload>,
 ) -> Result<Json<RevokeAllSessionsResult>> {
@@ -160,18 +193,19 @@ pub async fn revoke_all(
 }
 
 #[debug_handler]
-pub async fn delete(
+pub async fn delete_handler(
     State(state): State<AppState>,
+
     payload: Json<DeleteSessionsPayload>,
 ) -> Result<Json<DeleteSessionsResult>> {
     // revoke all the sessions
-    if payload.session_id.is_empty() {
+    if payload.session_id.is_empty() | payload.uid.is_empty(){
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
         });
     }
 
-    match Session::delete(&state.mongo_client, &payload.session_id).await {
+    match Session::delete(&state.mongo_client, &payload.session_id, &payload.uid).await {
         Ok(_) => {
             return Ok(Json(DeleteSessionsResult {
                 message: "Session deleted successfully".to_string(),
@@ -182,7 +216,7 @@ pub async fn delete(
 }
 
 #[debug_handler]
-pub async fn delete_all(
+pub async fn delete_all_handler(
     State(state): State<AppState>,
     payload: Json<DeleteAllSessionsPayload>,
 ) -> Result<Json<DeleteAllSessionsResult>> {

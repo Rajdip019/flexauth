@@ -32,6 +32,11 @@ pub enum Error {
     ExpiredSignature { message: String },
     SessionExpired { message: String },
     ActiveSessionExists { message: String },
+    SessionNotFound { message: String },
+
+    // -- Email erros
+    EmailVerificationLinkExpired { message: String },
+    BlockRequestLinkExpired { message: String },
 
     // -- Validation Errors
     InvalidEmail { message: String },
@@ -153,6 +158,19 @@ impl Error {
                 (StatusCode::CONFLICT, ClientError::ACTIVE_SESSION_EXISTS)
             }
 
+            Self::SessionNotFound { message: _ } => {
+                (StatusCode::NOT_FOUND, ClientError::SESSION_NOT_FOUND)
+            }
+
+            // -- Email errors
+            Self::EmailVerificationLinkExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::EMAIL_VERIFICATION_LINK_EXPIRED)
+            }
+
+            Self::BlockRequestLinkExpired { message: _ } => {
+                (StatusCode::UNAUTHORIZED, ClientError::BLOCK_REQUEST_LINK_EXPIRED)
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ClientError::SERVICE_ERROR,
@@ -177,6 +195,9 @@ pub enum ClientError {
     EXPIRED_SIGNATURE,
     SESSION_EXPIRED,
     ACTIVE_SESSION_EXISTS,
+    SESSION_NOT_FOUND,
+    EMAIL_VERIFICATION_LINK_EXPIRED,
+    BLOCK_REQUEST_LINK_EXPIRED,
 }
 
 // region:    --- Error Boilerplate

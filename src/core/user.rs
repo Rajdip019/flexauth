@@ -2,7 +2,7 @@ use std::env;
 
 use crate::{
     errors::{Error, Result},
-    models::{password_model::ForgetPasswordRequest, user_model::UserResponse},
+    models::{password_model::ForgetPasswordRequest, user_model::{EmailVerificationRequest, UserBlockRequest, UserResponse}},
     traits::{decryption::Decrypt, encryption::Encrypt},
     utils::{
         email_utils::Email, encryption_utils::Encryption, password_utils::Password
@@ -10,7 +10,7 @@ use crate::{
 };
 use bson::{doc, oid::ObjectId, uuid, DateTime};
 use futures::StreamExt;
-use mongodb::{Client, Collection};
+use mongodb::{options::FindOptions, Client, Collection};
 use serde::{Deserialize, Serialize};
 
 use super::{dek::Dek, session::Session};
@@ -48,7 +48,6 @@ impl User {
             updated_at: Some(DateTime::now()),
         }
     }
-
     pub async fn encrypt_and_add(&self, mongo_client: &Client, dek: &str) -> Result<Self> {
         let db = mongo_client.database("auth");
         let mut user = self.clone();
@@ -63,7 +62,6 @@ impl User {
             }
         }
     }
-
     pub async fn get_from_email(mongo_client: &Client, email: &str) -> Result<User> {
                 let user_collection: Collection<User> =
                     mongo_client.database("auth").collection("users");
@@ -79,7 +77,7 @@ impl User {
                 match user_collection
                     .find_one(
                         doc! {
-                            "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                            "uid": dek_data.uid,
                         },
                         None,
                     )
@@ -97,7 +95,6 @@ impl User {
                     }),
                 }
     }
-
     pub async fn get_from_uid(mongo_client: &Client, uid: &str) -> Result<User> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
@@ -110,7 +107,7 @@ impl User {
         match collection
             .find_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &uid,
                 },
                 None,
             )
@@ -128,73 +125,114 @@ impl User {
             }),
         }
     }
-
     pub async fn get_all(mongo_client: &Client) -> Result<Vec<UserResponse>> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
-        let collection_dek: Collection<Dek> = db.collection("deks");
 
-        // let cursor = collection.find(None, None).await.unwrap();
-        let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+        // get all the users
+        let mut cursor_user = collection.find(None, None).await.unwrap();
 
         let mut users = Vec::new();
-        let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
 
         // iterate over the users and decrypt the data
-        while let Some(dek) = cursor_dek.next().await {
-            let dek_data: Dek = match dek {
-                Ok(data) => data.decrypt(&kek),
+        while let Some(user) = cursor_user.next().await {
+            let user_data = match user {
+                Ok(data) => data,
                 Err(_) => {
                     return Err(Error::ServerError {
-                        message: "Failed to get DEK".to_string(),
+                        message: "Failed to get User".to_string(),
                     });
                 }
             };
 
-            let encrypted_email_dek = Encryption::encrypt_data(&dek_data.email, &dek_data.dek);
-
-            // find the user in the users collection using the encrypted email to iterate over the users
-            let cursor_user = collection
-                .find_one(
-                    Some(doc! {
-                        "email": encrypted_email_dek,
-                    }),
-                    None,
-                )
-                .await
-                .unwrap();
-
-            match cursor_user {
-                Some(user) => {
-                    let user_data = user.decrypt(&dek_data.dek);
-
-                    users.push(UserResponse {
-                        name: user_data.name,
-                        email: user_data.email,
-                        role: user_data.role,
-                        created_at: user_data.created_at,
-                        updated_at: user_data.updated_at,
-                        email_verified: user_data.email_verified,
-                        is_active: user_data.is_active,
-                        uid: user_data.uid,
-                    });
+            let dek_data = match Dek::get(&mongo_client, &user_data.uid).await {
+                Ok(dek) => dek,
+                Err(e) => {
+                    return Err(e);
                 }
-                None => {
-                    return Err(Error::UserNotFound {
-                        message: "No user found".to_string(),
-                    });
-                }
-            }
+            };
+
+            let decrypted_user = user_data.decrypt(&dek_data.dek);
+
+            users.push(UserResponse {
+                name: decrypted_user.name,
+                email: decrypted_user.email,
+                role: decrypted_user.role,
+                created_at: decrypted_user.created_at,
+                updated_at: decrypted_user.updated_at,
+                email_verified: decrypted_user.email_verified,
+                blocked_until: decrypted_user.blocked_until,
+                is_active: decrypted_user.is_active,
+                uid: decrypted_user.uid,
+            });
         }
+
+        // sort the users by created_at
+        users.sort_by(|a, b| a.created_at.cmp(&b.created_at));
 
         Ok(users)
     }
+    pub async fn get_recent(mongo_client: &Client, limit: i64) -> Result<Vec<UserResponse>> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<User> = db.collection("users");
 
-    pub async fn update_role(
-        mongo_client: &Client,
-        email: &str,
-        role: &str,
-    ) -> Result<String> {
+        // get recent users from the users collection till the limit provided sort by created_at
+
+        let find_options = FindOptions::builder()
+            .sort(doc! { "created_at": -1 })
+            .limit(limit)
+            .build();
+        
+        let mut cursor = collection
+            .find(None, find_options)
+            .await
+            .unwrap();
+        
+
+        let mut users = Vec::new();
+
+        // iterate over the users and decrypt the data
+        while let Some(user) = cursor.next().await {
+            let user_data = match user {
+                Ok(data) => data,
+                Err(_) => {
+                    return Err(Error::ServerError {
+                        message: "Failed to get User".to_string(),
+                    });
+                }
+            };
+
+            let dek_data = match Dek::get(&mongo_client, &user_data.uid).await {
+                Ok(dek) => dek,
+                Err(e) => {
+                    return Err(e);
+                }
+            };
+
+            let decrypted_user = user_data.decrypt(&dek_data.dek);
+
+            users.push(UserResponse {
+                name: decrypted_user.name,
+                email: decrypted_user.email,
+                role: decrypted_user.role,
+                blocked_until: decrypted_user.blocked_until,
+                created_at: decrypted_user.created_at,
+                updated_at: decrypted_user.updated_at,
+                email_verified: decrypted_user.email_verified,
+                is_active: decrypted_user.is_active,
+                uid: decrypted_user.uid,
+            });
+        }
+
+        // sort the users by created_at
+        users.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+
+        // get the recent users
+        let recent_users = users.iter().rev().take(limit as usize).cloned().collect();
+
+        Ok(recent_users)
+    }
+    pub async fn update_role(mongo_client: &Client,email: &str,role: &str) -> Result<String> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
 
@@ -209,7 +247,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -240,12 +278,7 @@ impl User {
             }
         }
     }
-
-    pub async fn toggle_account_activation(
-        mongo_client: &Client,
-        email: &str,
-        is_active: &bool,
-    ) -> Result<bool> {
+    pub async fn toggle_account_activation(mongo_client: &Client, email: &str, is_active: &bool) -> Result<bool> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
@@ -259,7 +292,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -290,11 +323,7 @@ impl User {
             }
         }
     }
-
-    pub async fn increase_failed_login_attempt(
-        mongo_client: &Client,
-        email: &str,
-    ) -> Result<i32> {
+    pub async fn increase_failed_login_attempt(mongo_client: &Client, email: &str) -> Result<i32> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
@@ -308,7 +337,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$inc": {
@@ -364,7 +393,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -408,7 +437,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -452,7 +481,7 @@ impl User {
                     match collection
                         .update_one(
                             doc! {
-                                "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                                "uid": &dek_data.uid,
                             },
                             doc! {
                                 "$set": {
@@ -484,11 +513,7 @@ impl User {
             }
         }
     }
-
-    pub async fn reset_failed_login_attempt(
-        mongo_client: &Client,
-        email: &str,
-    ) -> Result<String> {
+    pub async fn reset_failed_login_attempt(mongo_client: &Client,email: &str ) -> Result<String> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
         let dek_data = match Dek::get(&mongo_client, email).await {
@@ -502,7 +527,7 @@ impl User {
         match collection
             .update_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 doc! {
                     "$set": {
@@ -533,7 +558,6 @@ impl User {
             }
         }
     }
-
     pub async fn change_password(mongo_client: &Client, email: &str, old_password: &str, new_password: &str) -> Result<String> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
@@ -598,7 +622,6 @@ impl User {
             }
         }
     }
-
     pub async fn forget_password_request(mongo_client: &Client, email: &str) -> Result<String> {
         // check if the user exists
         let db = mongo_client.database("auth");
@@ -618,7 +641,7 @@ impl User {
         // create a new doc in forget_password_requests collection
         let new_doc = ForgetPasswordRequest {
             _id: ObjectId::new(),
-            id: uuid::Uuid::new().to_string(),
+            req_id: uuid::Uuid::new().to_string(),
             email: Encryption::encrypt_data(&email, &dek_data.dek),
             is_used: false,
             valid_till: ten_minutes_from_now,
@@ -636,18 +659,12 @@ impl User {
             &user.name,
             &user.email,
             &"Reset Password",
-            &format!("Please click on the link to reset your password: http://localhost:8080/forget-password-reset/{}", new_doc.id),
+            &format!("Please click on the link to reset your password: {}/forget-reset/{}", dotenv::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()), new_doc.req_id),
         ).send().await;
 
         Ok("Forget password request sent to email successfully".to_string())
     }
-
-    pub async fn forget_password_reset(
-        mongo_client: &Client,
-        req_id: &str,
-        email: &str,
-        new_password: &str
-    ) -> Result<String> {
+    pub async fn forget_password_reset(mongo_client: &Client,req_id: &str, email: &str,new_password: &str) -> Result<String> {
         let db = mongo_client.database("auth");
         let user_collection: Collection<User> = db.collection("users");
         let forget_password_requests_collection: Collection<ForgetPasswordRequest> =
@@ -663,10 +680,12 @@ impl User {
 
         // check if forget password request exists
         let forget_password_request = forget_password_requests_collection
-            .find_one(doc! { "id": &req_id }, None)
+            .find_one(doc! { "req_id": &req_id }, None)
             .await
             .unwrap()
             .unwrap();
+
+        println!("Forget Password Request {:?}", forget_password_request);
 
         if forget_password_request.is_used {
             return Err(Error::ResetPasswordLinkExpired {
@@ -719,7 +738,7 @@ impl User {
         // update the forget password request as used
         forget_password_requests_collection
             .find_one_and_update(
-                doc! { "id": &req_id },
+                doc! { "req_id": &req_id },
                 doc! {
                     "$set": {
                         "is_used": true,
@@ -730,18 +749,254 @@ impl User {
             )
             .await
             .unwrap();
+        
+        let block_req_id = match User::block_request(&mongo_client, &email, &user.uid).await {
+            Ok(req_id) => req_id,
+            Err(e) => {
+                return Err(e);
+            }
+        };
 
         // send a email to the user that the password has been updated
         Email::new( 
             &user.name,
             &email,
             &"Password Updated", 
-            &"Your password has been updated successfully. If it was not you please take action as soon as possible",
+            &format!("Your password has been updated successfully. If it was not you please take action as soon as possible. Click on the link to block your account temporarily: {}/block-account/{} . If you want to re-activate your account then please contact us by simply replying to this email.", dotenv::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()), block_req_id)
         ).send().await;
 
         Ok("Password updated successfully".to_string())
     }
+    pub async fn verify_email_request(mongo_client: &Client, email: &str) -> Result<EmailVerificationRequest> {
+        // make a new request in the email_verification_requests collection
+        let db = mongo_client.database("auth");
+        let collection: Collection<EmailVerificationRequest> = db.collection("email_verification_requests");
 
+        let dek_data = match Dek::get(&mongo_client, email).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // get a time 24h from now
+        let twenty_four_hours_from_now_millis = DateTime::now().timestamp_millis() + 86400000;
+        let twenty_four_hours_from_now = DateTime::from_millis(twenty_four_hours_from_now_millis);
+
+        let new_doc = EmailVerificationRequest {
+            _id: ObjectId::new(),
+            uid: dek_data.uid,
+            req_id: uuid::Uuid::new().to_string(),
+            email: Encryption::encrypt_data(&email, &dek_data.dek),
+            // expires in 24 hours
+            expires_at: twenty_four_hours_from_now,
+            created_at: Some(DateTime::now()),
+            updated_at: Some(DateTime::now()),
+        };
+
+        collection.insert_one(&new_doc, None).await.unwrap();
+
+        // send a email to the user with the link having id of the new doc
+        Email::new(
+            &"FlexAuth Team",
+            &email,
+            &"Verify Email",
+            &format!("Please click on the link to verify your email: {}/verify-email/{}", dotenv::var("SERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()), new_doc.req_id),
+        ).send().await;
+
+        Ok(new_doc)
+    }
+    pub async fn verify_email(mongo_client: &Client, req_id: &str) -> Result<String> {
+        // check if the email_verification_request exists
+        let db = mongo_client.database("auth");
+        let collection: Collection<EmailVerificationRequest> = db.collection("email_verification_requests");
+
+        let email_verification_request = match collection
+            .find_one(doc! { "req_id": req_id }, None)
+            .await
+            .unwrap() {
+            Some(data) => data,
+            None => {
+                return Err(Error::UserNotFound {
+                    message: "Email verification request not found. Please request a new link.".to_string(),
+                });
+            }
+        };
+
+        // check if the request exists
+        if email_verification_request.email.is_empty() {
+            return Err(Error::UserNotFound {
+                message: "Email verification request not found. Please request a new link.".to_string(),
+            });
+        }
+
+        if email_verification_request.expires_at.timestamp_millis() < DateTime::now().timestamp_millis() {
+            return Err(Error::EmailVerificationLinkExpired {
+                message: "The link has expired. Please request a new link.".to_string(),
+            });
+        }
+
+        // update the user with verified email
+        let user_collection: Collection<User> = db.collection("users");
+
+        user_collection
+            .find_one_and_update(
+                doc! { "uid": &email_verification_request.uid },
+                doc! {
+                    "$set": {
+                        "email_verified": true,
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        // delete the email_verification_request
+        collection
+            .delete_one(doc! { "req_id": req_id }, None)
+            .await
+            .unwrap();
+
+        let dek_data = match Dek::get(&mongo_client, &email_verification_request.uid).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        let decrypted_email = Encryption::decrypt_data(&email_verification_request.email, &dek_data.dek);
+
+        // send a email to the user that the email has been verified
+        Email::new(
+            &"FlexAuth Team",
+            &decrypted_email,
+            &"Email Verified",
+            &"Your email has been verified successfully. If it was not you please take action as soon as possible",
+        ).send().await;
+        Ok(req_id.to_string())
+    }
+    pub async fn block_request(mongo_client: &Client, email: &str, uid: &str) -> Result<String> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<UserBlockRequest> = db.collection("users_block_requests");
+
+        let dek_data = match Dek::get(&mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
+        // get a time 24h from now
+        let twenty_four_hours_from_now_millis = DateTime::now().timestamp_millis() + 86400000;
+        let twenty_four_hours_from_now = DateTime::from_millis(twenty_four_hours_from_now_millis);
+
+        let req_id = uuid::Uuid::new().to_string();
+        let block_request = UserBlockRequest {
+            _id: ObjectId::new(),
+            req_id: req_id.to_string(),
+            uid: uid.to_string(),
+            email: Encryption::encrypt_data(&email, &dek_data.dek),
+            is_used: false,
+            expires_at: twenty_four_hours_from_now,
+            created_at: Some(DateTime::now()),
+            updated_at: Some(DateTime::now()),
+        };
+
+        match collection.insert_one(&block_request, None).await {
+            Ok(_) => {
+                Ok(req_id)
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to insert block request".to_string(),
+                });
+            }
+        }
+    }
+    pub async fn block(mongo_client: &Client, req_id: &str) -> Result<String> {
+        let db = mongo_client.database("auth");
+        let collection: Collection<User> = db.collection("users");
+        let collection_block_requests: Collection<UserBlockRequest> = db.collection("users_block_requests");
+
+        // check if the block request exists
+        let block_request = match collection_block_requests
+            .find_one(doc! { "req_id": req_id }, None)
+            .await
+            .unwrap() {
+            Some(data) => data,
+            None => {
+                return Err(Error::UserNotFound {
+                    message: "Block request not found. Please request a new link.".to_string(),
+                });
+            }
+        };
+
+        // check if the request is expired
+        if block_request.expires_at.timestamp_millis() < DateTime::now().timestamp_millis() {
+            return Err(Error::BlockRequestLinkExpired {
+                message: "The link has expired. Please request a new link.".to_string(),
+            });
+        }
+
+        // check if the request is used
+        if block_request.is_used {
+            return Err(Error::BlockRequestLinkExpired {
+                message: "The link has already been used. Please request a new link.".to_string(),
+            });
+        }
+
+        // find the user in the users collection using the uid
+        match collection
+            .update_one(
+                doc! {
+                    "uid": &block_request.uid,
+                },
+                doc! {
+                    "$set": {
+                        "is_active": false,
+                        "updated_at": DateTime::now(),
+                    }
+                },
+                None,
+            )
+            .await
+        {
+            Ok(cursor) => {
+                let modified_count = cursor.modified_count;
+
+                // Return Error if User is not there
+                if modified_count == 0 {
+                    // send back a 404 to
+                    return Err(Error::UserNotFound {
+                        message: "User not found".to_string(),
+                    });
+                }
+
+                // Send a email to the user that the account has been blocked
+                let user = match User::get_from_uid(&mongo_client, &block_request.uid).await {
+                    Ok(user) => user,
+                    Err(e) => {
+                        return Err(e);
+                    }
+                };
+
+                Email::new(
+                    &user.name,
+                    &user.email,
+                    &"Account Blocked",
+                    &("Your account has been blocked. If it was not you please take action as soon as possible. If you want to re-activate your account then please contact us by simply replying to this email."),
+                ).send().await;
+                return Ok("User blocked successfully".to_string());
+            }
+            Err(_) => {
+                return Err(Error::ServerError {
+                    message: "Failed to update User".to_string(),
+                })
+            }
+        }
+    }
     pub async fn delete(mongo_client: &Client, email: &str) -> Result<String> {
         let db = mongo_client.database("auth");
         let collection: Collection<User> = db.collection("users");
@@ -757,7 +1012,7 @@ impl User {
         match collection
             .delete_one(
                 doc! {
-                    "uid": Encryption::encrypt_data(&dek_data.uid, &dek_data.dek),
+                    "uid": &dek_data.uid,
                 },
                 None,
             )

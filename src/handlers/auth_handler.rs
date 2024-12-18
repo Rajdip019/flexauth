@@ -131,13 +131,13 @@ pub async fn signout_handler(
 ) -> Result<Json<RevokeSessionsResult>> {
     println!(">> HANDLER: signout_handler called");
 
-    if payload.session_id.is_empty() {
+    if payload.session_id.is_empty() | payload.uid.is_empty() {
         return Err(Error::InvalidPayload {
             message: "Invalid payload passed".to_string(),
         });
     }
 
-    match Session::revoke(&state.mongo_client, &payload.session_id).await {
+    match Session::revoke(&state.mongo_client, &payload.session_id, &payload.uid).await {
         Ok(_) => Ok(Json(RevokeSessionsResult {
             message: "Session revoked successfully".to_string(),
         })),

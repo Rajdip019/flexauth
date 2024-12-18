@@ -3,6 +3,8 @@ use axum::response::Html;
 use axum::routing::get;
 use axum::{middleware, Router};
 use dotenv::dotenv;
+use handlers::password_handler::forget_password_form;
+use handlers::user_handler::{show_block_user_page, show_verification_page_email};
 use middlewares::res_log::main_response_mapper;
 use middlewares::with_api_key::with_api_key;
 use mongodb::Client;
@@ -37,11 +39,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(routes::user_routes::routes(State(app_state.clone())))
         .merge(routes::password_routes::routes(State(app_state.clone())))
         .merge(routes::session_routes::routes(State(app_state.clone())))
+        .merge(routes::overview_routes::routes(State(app_state.clone())))
         .layer(middleware::map_response(main_response_mapper))
         .layer(middleware::from_fn(with_api_key));
 
     // Define routes where middleware is not applied
-    let public_routes = Router::new().route("/", get(root_handler))
+    let public_routes = Router::new()
+        .route("/", get(root_handler))
+        .route("/forget-reset/:id", get(forget_password_form))
+        .route("/verify-email/:id", get(show_verification_page_email))
+        .route("/block-account/:id", get(show_block_user_page))
         .merge(routes::health_check_routes::routes())
         .layer(middleware::map_response(main_response_mapper));
 

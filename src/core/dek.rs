@@ -85,11 +85,11 @@ impl Dek {
         match is_email {
             true => {
                 // encrypt the email using kek
-                let encrypted_email_kek = Encryption::encrypt_data(&identifier, &server_kek);
+                let encrypted_identifier = Encryption::encrypt_data(&identifier, &server_kek);
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
-                            "email": encrypted_email_kek.clone(),
+                            "email": encrypted_identifier.clone(),
                         }),
                         None,
                     )
@@ -106,12 +106,10 @@ impl Dek {
                 };
             }
             false => {
-                // encrypt the uid using kek
-                let encrypted_uid_kek = Encryption::encrypt_data(&identifier, &server_kek);
                 let cursor_dek = collection_dek
                     .find_one(
                         Some(doc! {
-                            "uid": encrypted_uid_kek.clone(),
+                            "uid": identifier,
                         }),
                         None,
                     )

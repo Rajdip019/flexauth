@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use bson::{doc, DateTime};
+use woothee::parser::Parser;
 use futures::StreamExt;
 use mongodb::{Client, Collection};
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,12 @@ pub struct Session {
     pub id_token: String,
     pub refresh_token: String,
     pub user_agent: String,
+    pub os: String,
+    pub os_version: String,
+    pub vendor: String,
+    pub device: String,
+    pub browser: String,
+    pub browser_version: String,
     pub is_revoked: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
@@ -39,6 +46,33 @@ impl Session {
             Err(_) => "".to_string(),
         };
 
+        let parser = Parser::new();
+
+        let user_agent_data = parser.parse(user_agent);
+
+        let os = user_agent_data.as_ref().map_or_else(String::new, |result| result.os.to_string());
+
+        let os_version = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.os_version.to_string());
+
+        let vendor = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.vendor.to_string());
+
+        let device = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.category.to_string());
+
+        let browser = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.name.to_string());
+
+        let browser_version = user_agent_data
+            .as_ref()
+            .map_or_else(String::new, |result| result.version.to_string());
+
+
         Self {
             uid: user.uid.to_string(),
             session_id: Uuid::new_v4().to_string(),
@@ -46,6 +80,12 @@ impl Session {
             id_token,
             refresh_token,
             user_agent: user_agent.to_string(),
+            os,
+            os_version,
+            vendor,
+            device,
+            browser,
+            browser_version,
             is_revoked: false,
             created_at: DateTime::now(),
             updated_at: DateTime::now(),
@@ -124,6 +164,7 @@ impl Session {
 
     pub async fn refresh(
         mongo_client: &Client,
+        uid: &str,
         session_id: &str,
         id_token: &str,
         refresh_token: &str,
@@ -133,7 +174,7 @@ impl Session {
         match RefreshToken::verify(&refresh_token) {
             Ok(_) => {}
             Err(e) => {
-                match Self::revoke(&mongo_client, &session_id).await {
+                match Self::revoke(&mongo_client, &session_id, &uid).await {
                     Ok(_) => return Err(e),
                     Err(err) => return Err(err),
                 }
@@ -150,16 +191,17 @@ impl Session {
                         Err(e) => return Err(e),
                     };
 
-                    let encrypted_id = Encryption::encrypt_data(&token_verify_result.0.uid, &dek_data.dek);
+                    let encrypted_uid = Encryption::encrypt_data(&token_verify_result.0.uid, &dek_data.dek);
                     let encrypted_id_token = Encryption::encrypt_data(&id_token, &dek_data.dek);
                     let encrypted_refresh_token =
                         Encryption::encrypt_data(&refresh_token, &dek_data.dek);
+                    let encrypted_session_id = Encryption::encrypt_data(&session_id, &dek_data.dek);
 
                     match collection_session
                         .find_one(
                             doc! {
-                                "uid": &encrypted_id,
-                                "session_id": &session_id,
+                                "uid": &encrypted_uid,
+                                "session_id": &encrypted_session_id,
                                 "is_revoked": false,
                             },
                             None,
@@ -215,7 +257,7 @@ impl Session {
                                         match collection_session
                                             .update_one(
                                                 doc! {
-                                                    "uid": encrypted_id,
+                                                    "uid": encrypted_uid,
                                                     "id_token": encrypted_id_token,
                                                     "refresh_token": encrypted_refresh_token,
                                                     "is_revoked": false,
@@ -237,7 +279,7 @@ impl Session {
                                             }),
                                         };
                                     } else {
-                                        match Self::revoke(&mongo_client, &session_id).await {
+                                        match Self::revoke(&mongo_client, &session_id, &uid).await {
                                             Ok(_) => return Err(Error::InvalidToken {
                                                 message: "Invalid token".to_string(),
                                             }),
@@ -263,12 +305,106 @@ impl Session {
                 }
             } 
             Err(e) => {
-                match Self::revoke(&mongo_client, &session_id).await {
+                match Self::revoke(&mongo_client, &session_id, &uid).await {
                     Ok(_) => return Err(e),
                     Err(err) => return Err(err),
                 }
             }
         };
+    }
+
+    pub async fn get_all(mongo_client: &Client) -> Result<Vec<SessionResponse>> {
+        let db = mongo_client.database("auth");
+        let collection_session: Collection<Session> = db.collection("sessions");
+
+        // get all the sessions
+        let mut cursor = collection_session.find(None, None).await.unwrap();
+
+        let mut sessions = Vec::new();
+
+        while let Some(session) = cursor.next().await {
+            match session {
+                Ok(data) => {
+                    let dek_data = match Dek::get(mongo_client, &data.uid).await {
+                        Ok(dek) => dek,
+                        Err(e) => return Err(e),
+                    };
+
+                    let decrypted_session = data.decrypt(&dek_data.dek);
+
+                    sessions.push(SessionResponse {
+                        uid: decrypted_session.uid,
+                        session_id: decrypted_session.session_id,
+                        email: decrypted_session.email,
+                        user_agent: decrypted_session.user_agent,
+                        os: decrypted_session.os,
+                        os_version: decrypted_session.os_version,
+                        vendor: decrypted_session.vendor,
+                        device: decrypted_session.device,
+                        browser: decrypted_session.browser,
+                        browser_version: decrypted_session.browser_version,
+                        is_revoked: decrypted_session.is_revoked,
+                        created_at: decrypted_session.created_at,
+                        updated_at: decrypted_session.updated_at,
+                    });
+                }
+                Err(_) => {
+                    return Err(Error::ServerError {
+                        message: "Failed to get session".to_string(),
+                    });
+                }
+            }
+        }
+        // let collection_dek: Collection<Dek> = db.collection("deks");
+
+        // let mut cursor_dek = collection_dek.find(None, None).await.unwrap();
+
+        // let mut sessions = Vec::new();
+        // let kek = env::var("SERVER_KEK").expect("Server Kek must be set.");
+
+        // // iterate over the sessions and decrypt the data
+        // while let Some(dek) = cursor_dek.next().await {
+        //     let dek_data: Dek = match dek {
+        //         Ok(data) => data.decrypt(&kek),
+        //         Err(_) => {
+        //             return Err(Error::ServerError {
+        //                 message: "Failed to get DEK".to_string(),
+        //             });
+        //         }
+        //     };
+
+        //     // find the session in the sessions collection using the encrypted email to iterate over the sessions
+        //     let cursor_session = collection_session
+        //         .find_one(
+        //             Some(doc! {
+        //                 "uid": &dek_data.uid,
+        //             }),
+        //             None,
+        //         )
+        //         .await
+        //         .unwrap();
+
+        //     match cursor_session {
+        //         Some(session) => {
+        //             let session_data = session.decrypt(&dek_data.dek);
+
+        //             sessions.push(SessionResponse {
+        //                 uid: session_data.uid,
+        //                 session_id: session_data.session_id,
+        //                 email: session_data.email,
+        //                 user_agent: session_data.user_agent,
+        //                 is_revoked: session_data.is_revoked,
+        //                 created_at: session_data.created_at,
+        //                 updated_at: session_data.updated_at,
+        //             });
+        //         }
+        //         None => {()}
+        //     }
+        // }
+
+        // sort the sessions by created_at
+        sessions.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+        Ok(sessions)
     }
 
     pub async fn get_all_from_uid(
@@ -283,13 +419,10 @@ impl Session {
             Err(e) => return Err(e),
         };
 
-        let encrypted_uid = Encryption::encrypt_data(uid, &dek_data.dek);
-
         let mut cursor = collection_session
             .find(
                 doc! {
-                    "uid": encrypted_uid,
-                    "is_revoked": false,
+                    "uid": uid,
                 },
                 None,
             )
@@ -306,8 +439,15 @@ impl Session {
                             println!("{:?}", token);
                             sessions_res.push(SessionResponse {
                                 uid: decrypted_session.uid,
+                                session_id: decrypted_session.session_id,
                                 email: decrypted_session.email,
                                 user_agent: decrypted_session.user_agent,
+                                os: decrypted_session.os,
+                                os_version: decrypted_session.os_version,
+                                vendor: decrypted_session.vendor,
+                                device: decrypted_session.device,
+                                browser: decrypted_session.browser,
+                                browser_version: decrypted_session.browser_version,
                                 is_revoked: decrypted_session.is_revoked,
                                 created_at: decrypted_session.created_at,
                                 updated_at: decrypted_session.updated_at,
@@ -326,12 +466,65 @@ impl Session {
         Ok(sessions_res)
     }
 
+    pub async fn get_details(mongo_client: &Client, uid: &str, session_id: &str) -> Result<SessionResponse> {
+        let db = mongo_client.database("auth");
+        let collection_session: Collection<Session> = db.collection("sessions");
+
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
+        let session = match collection_session
+            .find_one(doc! {"uid": &uid, "session_id": encrypted_session_id}, None)
+            .await
+        {
+            Ok(session) => {
+                match session {
+                    Some(data) => {
+                        let decrypted_session = data.decrypt(&dek_data.dek);
+                        Ok(decrypted_session)
+                    }
+                    None => Err(Error::SessionNotFound  {
+                        message: "Session not found".to_string(),
+                    }),
+                }
+            }
+            Err(e) => Err(Error::ServerError {
+                message: e.to_string(),
+            }),
+        };
+
+        match session {
+            Ok(data) => {
+                Ok(SessionResponse {
+                    uid: data.uid,
+                    session_id: data.session_id,
+                    email: data.email,
+                    user_agent: data.user_agent,
+                    os: data.os,
+                    os_version: data.os_version,
+                    vendor: data.vendor,
+                    device: data.device,
+                    browser: data.browser,
+                    browser_version: data.browser_version,
+                    is_revoked: data.is_revoked,
+                    created_at: data.created_at,
+                    updated_at: data.updated_at,
+                })
+            }
+            Err(e) => Err(e),
+        }
+    } 
+
     pub async fn revoke_all(mongo_client: &Client, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
-            .update_many(doc! {"uid": uid}, doc! {"$set": {"is_revoked": true}}, None)
+            .update_many(doc! {"uid": &uid }, doc! {"$set": {"is_revoked": true}}, None)
             .await
         {
             Ok(_) => Ok(()),
@@ -341,13 +534,20 @@ impl Session {
         }
     }
 
-    pub async fn revoke(mongo_client: &Client, session_id: &str) -> Result<()> {
+    pub async fn revoke(mongo_client: &Client, session_id: &str, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
         match collection_session
             .update_one(
-                doc! {"session_id": session_id},
+                doc! {"session_id": encrypted_session_id},
                 doc! {"$set": {"is_revoked": true}},
                 None,
             )
@@ -360,13 +560,20 @@ impl Session {
         }
     }
 
-    pub async fn delete(mongo_client: &Client, session_id: &str) -> Result<()> {
+    pub async fn delete(mongo_client: &Client, session_id: &str, uid: &str) -> Result<()> {
         let db = mongo_client.database("auth");
         let collection_session: Collection<Session> = db.collection("sessions");
 
+        let dek_data = match Dek::get(mongo_client, uid).await {
+            Ok(dek) => dek,
+            Err(e) => return Err(e),
+        };
+
+        let encrypted_session_id = Encryption::encrypt_data(session_id, &dek_data.dek);
+
         match collection_session
             .delete_one(
-                doc! { "session_id": session_id },
+                doc! { "session_id": encrypted_session_id },
                 None,
             )
             .await
@@ -383,7 +590,7 @@ impl Session {
         let collection_session: Collection<Session> = db.collection("sessions");
 
         match collection_session
-            .delete_many(doc! {"uid": uid}, None)
+            .delete_many(doc! {"uid": &uid }, None)
             .await
         {
             Ok(_) => Ok(()),

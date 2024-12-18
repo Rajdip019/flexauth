@@ -1,11 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
 ARG RUST_VERSION=1.77
 ARG APP_NAME=inhouse-auth
 
@@ -16,19 +10,21 @@ FROM rust:${RUST_VERSION}-alpine AS dev
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache musl-dev
-
-# Install OpenSSL development libraries
-RUN apk add --no-cache pkgconfig openssl-dev
-
-# -lssl -lcrypto are required for the openssl crate
-RUN apk add --no-cache openssl-libs-static
+# Install system dependencies and required libraries for the build
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
 
 # Install cargo-watch for auto-reloading
 RUN cargo install cargo-watch
 
-# Copy the source code into the container
+# Copy the Cargo.toml and Cargo.lock files separately to cache dependencies
+COPY Cargo.toml Cargo.lock ./
+
+# Create a dummy source file and build dependencies to cache them
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release || true
+RUN rm -rf src
+
+# Copy the actual source code
 COPY . .
 
 # Mount the source code into the container
@@ -63,14 +59,16 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-cargo build --locked --release && \
-cp ./target/release/$APP_NAME /bin/server
+    cargo build --locked --release && \
+    cp ./target/release/$APP_NAME /bin/server
 
 ################################################################################`
 
 ## Final build file
 
 FROM alpine:3.18 AS final
+
+ARG PORT
 
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
@@ -89,33 +87,7 @@ USER appuser
 COPY --from=build /bin/server /bin/
 
 # Expose the port that the application listens on.
-EXPOSE 8080
+EXPOSE ${PORT}
 
 # What the container should run when it is started.
 CMD ["/bin/server"]
-
-
-################################################################################
-# Docker File for SMTP Server
-
-FROM ubuntu:latest AS smtp
-
-ARG EMAIL
-ARG EMAIL_PASSWORD
-ARG MAIL_NAME
-ARG SMTP_DOMAIN
-ARG SMTP_PORT
-
-RUN apt-get update && \
-    apt-get install -y mailutils && \
-    apt install -y postfix
-
-COPY /main.cf /etc/postfix/main.cf
-
-RUN sh -c 'echo "root: ${EMAIL}" >> /etc/aliases' && \
-    sh -c 'echo "${MAIL_NAME}" >> /etc/mailname' && \
-    sh -c 'echo "[${SMTP_DOMAIN}]:${SMTP_PORT} ${EMAIL}:${EMAIL_PASSWORD}" >> /etc/postfix/sasl_passwd' && \
-    postmap /etc/postfix/sasl_passwd && \
-    chmod 0600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
-
-CMD service postfix restart && tail -f /dev/null
