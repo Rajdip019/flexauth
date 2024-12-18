@@ -1,6 +1,4 @@
 ################################################# Initial Setup #################################################
-
-
 # Define the list of required environment variables for the root .env file
 REQUIRED_ENV_VARS = PORT SERVER_KEK EMAIL_PASSWORD EMAIL MAIL_NAME SMTP_DOMAIN SMTP_PORT MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD
 
@@ -70,6 +68,11 @@ SKAFFOLD_TEMPLATE := skaffold.template.yaml
 SKAFFOLD_GENERATED := skaffold.generated.yaml
 NAMESPACE=flexauth
 SECRET=flexauth-secrets
+<<<<<<< HEAD
+=======
+PROMETHEUS_RELEASE=prometheus
+GRAFANA_RELEASE=grafana
+>>>>>>> rajdeep/k8s-grafana
 
 # Load .env file and export all variables for Makefile
 include $(ENV_FILE)
@@ -145,6 +148,42 @@ down-k8s:
 	@kubectl delete namespace $(NAMESPACE)
 	@echo "All resources deleted."
 
+<<<<<<< HEAD
 # Final targets
 flexauth-up-k8s: setup minikube-up create-namespace create-secret $(SKAFFOLD_GENERATED) up-k8s clean logs-k8s
 flexauth-down-k8s: down-k8s clean
+=======
+.PHONY: up
+up-monitoring: create-namespace install-prometheus install-grafana
+
+create-namespace:
+	kubectl create namespace $(NAMESPACE) || echo "Namespace $(NAMESPACE) already exists"
+
+install-prometheus:
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	helm repo update
+	helm install $(PROMETHEUS_RELEASE) prometheus-community/prometheus --namespace $(NAMESPACE)
+
+install-grafana:
+	helm repo add grafana https://grafana.github.io/helm-charts
+	helm repo update
+	helm install $(GRAFANA_RELEASE) grafana/grafana --namespace $(NAMESPACE) --set service.type=LoadBalancer
+
+.PHONY: down
+down-monitoring: uninstall-prometheus uninstall-grafana delete-namespace
+
+uninstall-prometheus:
+	helm uninstall $(PROMETHEUS_RELEASE) --namespace $(NAMESPACE) || echo "$(PROMETHEUS_RELEASE) not installed"
+
+uninstall-grafana:
+	helm uninstall $(GRAFANA_RELEASE) --namespace $(NAMESPACE) || echo "$(GRAFANA_RELEASE) not installed"
+
+delete-namespace:
+	kubectl delete namespace $(NAMESPACE) || echo "Namespace $(NAMESPACE) already deleted"
+
+# Final targets
+flexauth-up-k8s: setup minikube-up create-namespace create-secret $(SKAFFOLD_GENERATED) up-k8s up-monitoring clean logs-k8s
+flexauth-down-k8s: down-k8s down-monitoring clean
+
+
+>>>>>>> rajdeep/k8s-grafana

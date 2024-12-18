@@ -14,7 +14,7 @@ WORKDIR /app
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static
 
 # Install cargo-watch for auto-reloading
-RUN cargo install cargo-watch
+RUN cargo install cargo-watch --locked
 
 # Copy the Cargo.toml and Cargo.lock files separately to cache dependencies
 COPY Cargo.toml Cargo.lock ./
@@ -50,7 +50,8 @@ RUN apk add --no-cache pkgconfig openssl-dev
 RUN apk add --no-cache openssl-libs-static
 
 
-RUN cargo install cargo-watch
+RUN cargo install cargo-watch --locked
+
 
 
 RUN --mount=type=bind,source=src,target=src \
